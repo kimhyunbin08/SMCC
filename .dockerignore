@@ -8,3 +8,4 @@ test
 scripts
 docker-compose.yml
 .DS_Store
+.azure

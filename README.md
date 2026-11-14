@@ -4,6 +4,13 @@
 
 기존 [smcc.global](https://smcc.global/)과 별개의 보조 프로토타입이다. 기존 사이트를 변경하거나 도메인을 연결하지 않는다.
 
+## 배포 상태
+
+초기 실제 배포: [SMCC 프로토타입 열기](https://smcc-web.wonderfulcliff-f9ca16c6.koreacentral.azurecontainerapps.io/).
+[성공한 main 자동 배포](https://github.com/kimhyunbin08/SMCC/actions/runs/43535519925)에서 이미지 빌드·OIDC 로그인·리비전 교체·라이브 SHA 확인을 완료했다. Azure CLI의 기존 조직 이메일 계정과 tenant를 확인했으며 배포는 요청한 **innodge 조직 컨텍스트**의 `smcc-rg`에 있다. 개인 이메일 주소나 인증 정보는 문서에 기록하지 않는다.
+
+GitHub 저장소는 [kimhyunbin08/SMCC](https://github.com/kimhyunbin08/SMCC)를 유지한다. 기존 smcc.global 도메인이나 다른 프로젝트 리소스는 변경하지 않았다. 새로운 조직 로그인이나 리소스 이동은 필요하지 않으며, main push 자동 배포를 그대로 사용할 수 있다.
+
 ## 로컬 실행
 
 Node.js 24 이상:
