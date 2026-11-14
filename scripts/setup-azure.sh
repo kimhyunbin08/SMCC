@@ -6,6 +6,11 @@ RESOURCE_GROUP="${RESOURCE_GROUP:-smcc-rg}"
 LOCATION="${LOCATION:-koreacentral}"
 APP_NAME="${APP_NAME:-smcc-web}"
 ENVIRONMENT="${ENVIRONMENT:-smcc-env}"
+SUBJECT_PREFIX=$(gh api "repos/$REPO/actions/oidc/customization/sub" \
+  --jq 'if .use_default then .sub_claim_prefix else error("Custom OIDC subjects require an explicit credential setup") end')
+if [ -z "$SUBJECT_PREFIX" ] || [ "$SUBJECT_PREFIX" = "null" ]; then
+  SUBJECT_PREFIX="repo:$REPO"
+fi
 SUBSCRIPTION_ID=$(az account show --query id -o tsv)
 TENANT_ID=$(az account show --query tenantId -o tsv)
 SUFFIX=$(printf '%s' "$SUBSCRIPTION_ID" | tr -d '-' | cut -c1-10)
@@ -24,7 +29,7 @@ DEPLOY_PRINCIPAL=$(az identity show --name smcc-deploy --resource-group "$RESOUR
 DEPLOY_CLIENT=$(az identity show --name smcc-deploy --resource-group "$RESOURCE_GROUP" --query clientId -o tsv)
 az identity federated-credential create --name github-main --identity-name smcc-deploy \
   --resource-group "$RESOURCE_GROUP" --issuer https://token.actions.githubusercontent.com \
-  --subject "repo:${REPO}:ref:refs/heads/main" --audiences api://AzureADTokenExchange --output none
+  --subject "${SUBJECT_PREFIX}:ref:refs/heads/main" --audiences api://AzureADTokenExchange --output none
 az role assignment create --assignee-object-id "$DEPLOY_PRINCIPAL" --assignee-principal-type ServicePrincipal \
   --role Contributor --scope "$GROUP_ID" --output none
 az role assignment create --assignee-object-id "$DEPLOY_PRINCIPAL" --assignee-principal-type ServicePrincipal \

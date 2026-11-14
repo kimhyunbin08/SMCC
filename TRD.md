@@ -26,6 +26,8 @@ Docker Compose는 **로컬용**이다. Azure App Service Compose는 preview이�
 
 GitHub Actions는 main 전용 federated credential과 user-assigned managed identity로 Azure에 로그인한다. 비밀번호·publish profile·장기 secret은 사용하지 않는다. 배포 identity는 프로젝트 리소스 그룹의 Contributor와 해당 ACR의 AcrPush이며 다른 그룹이나 구독 전체에 권한을 주지 않는다. 별도 pull identity는 해당 ACR의 AcrPull만 가진다. 구독/tenant/client ID 등 비밀이 아닌 설정은 GitHub Actions variables로 저장한다.
 
+OIDC subject는 GitHub API의 실제 repository subject prefix를 사용한다. 새 저장소의 immutable subject에는 owner/repository ID가 포함되므로 이름만으로 subject를 조립하지 않는다. custom subject 정책은 자동으로 추정하지 않고 명시적 설정을 요구한다.
+
 배포는 테스트 → linux/amd64 이미지 빌드 → commit SHA 태그로 push → Container Apps 단일 리비전 업데이트 → `/healthz`의 실제 SHA 확인 순이다. PR에서는 Azure 로그인/배포를 수행하지 않는다. 스켈레톤에는 영속 데이터가 없다. 컨테이너 안을 Portal에서 직접 수정하지 않고 원본 코드를 push한다.
 
 ## 검증 및 운영
