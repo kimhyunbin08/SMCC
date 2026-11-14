@@ -4,6 +4,8 @@
 
 Read `ideation.md`, `PRD.md`, and `TRD.md` before changing product behavior. This release is a deployable skeleton, not the full MVP. Preserve existing documents. Keep host, invitation, participant, profile, auth, database and AI features as explicit placeholders until requested.
 
+The future MVP sections in PRD/TRD and `CROSS_VALIDATION.md` are planning proposals, not implementation or policy approval. Document-only work must change only Markdown and must not run builds, change app/Docker/workflows/cloud/auth, push commits or trigger deployment. The current no-auth/no-DB/no-personal-data skeleton restrictions remain in force until an explicit implementation request. After that, follow the future PRD/TRD and satisfy G01-G04 before real personal-data pilots, new paid resources or AI activation.
+
 Limit file work to this SMCC folder and repository `kimhyunbin08/SMCC`. Do not inspect or modify other folders/repositories. Azure changes must remain in this project's resource group. The existing smcc.global website is separate; do not alter its domain or copy its assets.
 
 ## Conventions
