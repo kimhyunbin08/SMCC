@@ -1,0 +1,8 @@
+services:
+  web:
+    build: .
+    ports:
+      - "127.0.0.1:${HOST_PORT:-3000}:3000"
+    environment:
+      PORT: "3000"
+    restart: unless-stopped

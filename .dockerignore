@@ -1,0 +1,10 @@
+.git
+.github
+node_modules
+.env
+.env.*
+*.md
+test
+scripts
+docker-compose.yml
+.DS_Store
