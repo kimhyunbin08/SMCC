@@ -2,26 +2,26 @@
 
 ## Scope
 
-Read `ideation.md`, `PRD.md`, and `TRD.md` before changing product behavior. This release is a deployable skeleton, not the full MVP. Preserve existing documents. Keep host, invitation, participant, profile, auth, database and AI features as explicit placeholders until requested.
+Read `ideation.md`, `PRD.md`, and `TRD.md` before changing product behavior. The user explicitly requested the basic MVP: username/password, editable link profile, host teams, direct invitation join and announcement inbox. Preserve historical planning and feedback-loop proposals; AI and LinkedIn import remain unconfigured, not working features.
 
-The future MVP sections in PRD/TRD and `CROSS_VALIDATION.md` are planning proposals, not implementation or policy approval. Document-only work must change only Markdown and must not run builds, change app/Docker/workflows/cloud/auth, push commits or trigger deployment. The current no-auth/no-DB/no-personal-data skeleton restrictions remain in force until an explicit implementation request. After that, follow the future PRD/TRD and satisfy G01-G04 before real personal-data pilots, new paid resources or AI activation.
+The current release sections supersede older approval-flow/magic-link/PostgreSQL proposals. Documentation-only tasks must not trigger deployment. Only SMCC Table Storage Standard LRS was explicitly approved as new paid storage; do not infer approval for other resources. Operator/support information belongs in runtime settings, not the public repository.
 
 Limit file work to this SMCC folder and repository `kimhyunbin08/SMCC`. Do not inspect or modify other folders/repositories. Azure changes must remain in this project's resource group. The existing smcc.global website is separate; do not alter its domain or copy its assets.
 
 ## Conventions
 
-- Use Node.js 24 LTS built-ins and plain HTML/CSS for the current skeleton.
+- Use Node.js 24 LTS and plain HTML/CSS/JavaScript; official Azure identity/Table SDKs are the only runtime dependencies.
 - Keep UI copy in Korean, responsive and accessible. Do not add fake working flows.
 - Serve only allowlisted public assets; never expose source, documents or environment files.
 - Log unexpected operational errors and return an appropriate failure response.
 - Keep `/healthz` backward compatible and expose `APP_REVISION` for deployment verification.
-- Do not store personal data or infer profiles from social links. Future AI text requires user review and approval.
+- Minimize personal data and require separate opt-in for public/team profile sharing. Do not infer profiles from social links. Future AI text requires user review and approval.
 - Never commit secrets, Azure tokens, publish profiles or `.env` files.
 - Update related docs when changing HTTP contracts, container ports or deployment.
 
 ## Validation
 
-Run `npm test` and `docker compose config --quiet`. For container changes, also run `docker compose up --build -d --wait`, verify `/` and `/healthz` on localhost:3000, then `docker compose down`. There is no dependency installation or build step currently.
+Run `npm ci --ignore-scripts`, `npm test` and `docker compose config --quiet`. For container changes, also run `docker compose up --build -d --wait`, verify `/`, `/healthz` and the actual MVP workflow, then `docker compose down` without deleting the data volume. Use `HOST_PORT=3187` when port 3000 is occupied. There is no frontend build step. Live E2E uses only synthetic data and must delete its fixture afterward.
 
 ## Deployment
 

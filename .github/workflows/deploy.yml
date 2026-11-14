@@ -21,6 +21,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
       - run: npm test
       - run: docker compose config --quiet
 
@@ -76,6 +78,7 @@ jobs:
             if BODY=$(curl --fail --silent --show-error --max-time 20 "https://$HOST/healthz") &&
               echo "$BODY" | jq -e --arg sha "$GITHUB_SHA" '.status == "ok" and .service == "smcc" and .revision == $sha' > /dev/null; then
               curl --fail --silent --show-error --retry 3 "https://$HOST/" | grep -q '서울모닝커피클럽'
+              curl --fail --silent --show-error --retry 3 "https://$HOST/readyz" | jq -e '.ready == true' > /dev/null
               echo "### Deployed https://$HOST" >> "$GITHUB_STEP_SUMMARY"
               exit 0
             fi

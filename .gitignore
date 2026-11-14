@@ -6,3 +6,8 @@ node_modules/
 coverage/
 *.log
 .azure/
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+/.mvp-verification.json
+/.test-*.sqlite*

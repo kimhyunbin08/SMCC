@@ -1,8 +1,37 @@
 # SMCC TRD
 
+## 현재 기본 MVP 기술 계약
+
+단일 Node.js 24 HTTP 앱과 HTML/CSS/JavaScript를 유지한다. 메일·LinkedIn 앱이 없으므로 이메일 OTP/SSO/가져오기는 구현하지 않는다. Azure 인증·Table 데이터 접근에만 공식 `@azure/identity`, `@azure/data-tables` SDK와 lockfile을 사용하며 프런트엔드 빌드는 없다.
+
+`src/database.js`는 로컬 SQLite key/value 레코드를 파일/WAL/Compose 볼륨에 저장한다. `src/table-store.js`는 동일한 `get/list/create/mutate/remove/check` 계약을 Azure Table에 구현한다. `users`, `sessions`, `teams`, `announcements`, `receipts`, `rates`는 별도 partition이며 팀의 최대 30명 멤버십은 동일 entity 안에 있어 정원·초대 회전·탈퇴를 ETag 조건부 Replace로 원자 처리한다. 충돌은 최신 데이터를 읽어 유한 재시도하며 장애를 빈 성공으로 바꾸지 않는다.
+
+작은 파일럿을 위해 팀/공지 partition을 조회한 뒤 서버에서 권한 필터링한다. 응답에 원본 전체 entity·암호·초대 hash·멤버십 map을 직렬화하지 않는다. 대규모 인덱스·큐·마이크로서비스는 추가하지 않으며 사용자/팀 증가 시 조회량·비용을 확인해야 한다.
+
+계정 생성은 아이디 hash 키의 create-only로 유일성을 보장한다. scrypt N32768, 난수 salt, 32byte 복구 코드 hash, auth_version으로 암호 변경 전 세션을 즉시 무효화한다. 비동기 암호 검증 후 최신 auth_version을 다시 확인해 오래된 인증으로 변경하지 않는다. 세션 쿠키는 HttpOnly/Secure/SameSite=Strict, 7일이며 상태 변경은 Origin·CSRF와 JSON 최대16KiB 검증을 적용한다. 로컬 HTTP에만 Secure를 끈다.
+
+삭제는 먼저 사용자/팀을 비활성화해 접근을 차단하고 관련 partition을 정리한다. cross-partition SQL transaction이 있다고 주장하지 않는다. 장애는503으로 보고하고 삭제 표식을 시작/30분 유지보수에서 재처리한다. 이름·소개·암호가 없는 삭제 아이디 hash 예약만30일 남겨 재사용으로 과거 권한이 연결되지 않게 한다. 종료+30일 팀/공지/읽음과 만료 세션·rate도 같은 작업에서 정리한다. scale-to-zero 중에는 정리가 늦을 수 있고 상대 프로필 접근은 매 요청 현재 시각으로 제한한다.
+
+| API | 실제 역할 |
+| --- | --- |
+| GET `/api/status`, `/readyz` | 저장소 실제 연결 확인. 미설정/장애는 기능 비활성 또는503 |
+| POST `/api/register`, `/api/login`, `/api/logout`, `/api/recover`, `/api/password` | 계정/인증, 복구·암호 교체 |
+| GET `/api/me`, PUT `/api/profile`, GET `/api/profiles/:username` | 본인 프로필·명시적 인터넷 공개만 |
+| GET/POST `/api/teams`, GET/DELETE `/api/teams/:id` | 본인 팀 목록·호스트 생성/삭제·멤버 상세 |
+| GET `/api/invites/:token`, POST `/api/join` | 장소/프로필 없는 안내와 고지 확인 직접 가입 |
+| PUT `/api/teams/:id/sharing`, POST `/api/teams/:id/leave`, `/rotate`, `/close` | 공유·참가·자기 호스트 초대 관리 |
+| POST `/api/teams/:id/announcements`, GET `/api/inbox`, POST `/api/inbox/:id/read` | 자기 팀 공지·멤버 인박스·본인 읽음 |
+| DELETE `/api/account` | 현재 암호 확인 후 차단/삭제 |
+
+`/healthz` 기존 status/service/revision 계약은 유지한다. `/`, `/styles.css`, `/app.js`, `/invite/:token`, `/p/:username`, `/privacy`, `/terms`만 정적 allowlist로 제공한다. 운영자/문의 템플릿은 런타임에서 치환하고 다른 Markdown·source·환경 파일은 공개하지 않는다.
+
+Azure는 `smcc-rg`의 `smccdata116481c1a3` Standard_LRS/한국 중부와 `smccdata` table을 사용한다. Shared Key는 비활성, HTTPS/TLS1.2 필수, 기존 앱 identity에 해당 table 범위의 Storage Table Data Contributor만 부여한다. `TABLE_ENDPOINT`, `TABLE_NAME`, `STORAGE_CLIENT_ID`, `PUBLIC_ORIGIN`, 운영자/문의 secretref, `REGISTRATION_ENABLED`를 설정한다. 저장소 없을 때 임시 디스크로 대체하지 않는다.
+
+**이후의 Phase 0/Phase 1은 보존된 이전 구조·확장 제안으로, 현재 API/동의/역할/스토리지와 다른 경우 이 절이 우선한다.**
+
 ## 상태와 적용 범위
 
-**Phase 0은 이미 존재하는 스켈레톤 계약, Phase 1은 아직 구현하지 않은 차기 MVP 설계 제안**이다. 2026-11-14의 문서-only 교차검토 결과이며 이 문서로 코드·DB·인증·AI·추가 배포가 완료됐다고 주장하지 않는다. 제품 결정·게이트·수용 기준의 기준은 [PRD.md](PRD.md) D01–D12, G01–G04, AC01–AC24다.
+**현재 릴리스는 아래 기본 MVP 계약을 따른다. Phase 0/Phase 1의 오래된 스켈레톤·차기 설계는 이력으로 보존한다.** 2026-11-14의 문서-only 교차검토 및 이후 사용자 피드백 요청을 반영하며 이 문서로 코드·DB·인증·AI·추가 배포가 완료됐다고 주장하지 않는다. 제품 결정·게이트·수용 기준은 [PRD.md](PRD.md) D01–D13, G01–G04, AC01–AC29다. 후기·개선 순환 추가분은 새 세 모델 검토 결과가 아니다.
 
 ## 최소 구조
 
@@ -50,7 +79,7 @@ OIDC subject는 GitHub API의 실제 repository subject prefix를 사용한다. 
 
 | 구성 | 제안 책임 | 도입 게이트 |
 | --- | --- | --- |
-| 단일 웹앱 | 세션·프로필·멤버십·동의, 서버 권한 검사, AI 요청 프록시 | 명시적 구현 지시 |
+| 단일 웹앱 | 세션·프로필·멤버십·동의·비공개 피드백·수동 개선 기록, 서버 권한 검사, AI 요청 프록시 | 명시적 구현 지시 |
 | 이메일 인증 서비스 | 매직링크 발송·검증, 사용자 식별 | G03 제공자·비용 |
 | 외부 관리형 PostgreSQL | 영속 상태·트랜잭션·제약·삭제·백업 | G02·G03 정책/비용 |
 | 선택적 LLM API | 제공 텍스트 소개 초안만, 도구·검색 없음 | G04 |
@@ -66,7 +95,10 @@ PostgreSQL은 동시 승인과 영속성에 맞춘 목표 선택이지 이미 �
 | Profile | user_id, 호칭, 소개, 선택 직무·주제·HTTPS 링크, version | 계정당 1개. AI 원문·미승인 초안 없음 |
 | Session | UUID, host_user_id, 제목, starts_at/ends_at/deadline, timezone, 공개 안내/상세 장소, capacity, status, invite_token_hash | 호스트 1명. UTC 저장, Asia/Seoul 표시. PRD 시각/정원 제약 |
 | Membership | session_id, user_id, status, peer_fields, consent_version/consented_at, 신청·상태 시각 | session_id + user_id 고유. team 테이블 없음 |
+| 멤버십 상태 이력 | membership_id, 이전/이후 상태, 전이 시각 | 종료 당시 피드백 자격 판정용 최소 기록. 프로필 없음, 세션 종료 후 30일·계정 삭제 때 정리 |
 | 최소 운영 기록 | 임의 이벤트 ID, 행위 유형, 시각, 삭제 기한 | 본문·토큰·이메일·소개·링크 기록 금지, 보관 정책 필요 |
+| Feedback | session_id, author_user_id, respondent_type, topic_codes, liked_text, improve_text, version, 전달 고지 동의/시각, 생성/수정 시각 | session_id + author_user_id 고유. host/participant 구분, 프로필 복제 없음 |
+| ImprovementNote | session_id, 주제·행동·담당·상태·점검일·보류 이유, 작성 시각 | 운영자 수동 검토. 응답 원문·작성자 FK/인용 없음, 90일 기한 |
 
 Profile은 실시간 재사용 원본이고 Membership은 공개 항목과 동의 기록만 갖는다. 과거 소개 스냅샷을 만들지 않는다. 사용자 편집 시 version을 증가시키고 참여 중인 활성 세션에 적용됨을 UI에서 안내한다. `peer_fields`의 허용 필드는 서버 allowlist로 제한한다.
 
@@ -119,9 +151,30 @@ Profile은 실시간 재사용 원본이고 Membership은 공개 항목과 동�
 | POST `/api/profile/draft` | 선택적 AI 초안 | 동의·G04 flag·quota, 실패 422/429/503/504 |
 | POST `/api/sessions/:id/rotate-invite` | 초대 회전 | 자기 호스트, 기존 Membership 유지 |
 | POST `/api/sessions/:id/cancel` | 세션 취소 | 자기 호스트, 모든 상대방 열람 회수 |
+| GET `/api/sessions/:id/feedback/mine` | 본인 피드백/제출 가능 상태 | 본인만, 종료 세션에서도 상대방 정보 없음 |
+| PUT `/api/sessions/:id/feedback/mine` | 본인 제출·기한 내 수정 | 종료 당시 대상자, 7일 미만, 동의/길이/version 검사 |
+| DELETE `/api/sessions/:id/feedback/mine` | 본인 피드백 삭제 | 본인, 제출 창 이후에도 보관 중 가능 |
+| GET `/api/sessions/:id/feedback-summary` | 자기 호스트용 주제별 집계 | 참가자 응답 최소 5개. 원문·작성자 없음 |
+| GET `/api/sessions/:id/feedback-review` | 배정 세션의 원문 검토 | 지정 검토자만, author/profile/email 필드 제외 |
+| GET/POST `/api/sessions/:id/improvements` | 개선 메모 조회/수동 작성 | 조회는 자기 호스트/배정 검토자, 작성은 검토자 |
+| PATCH `/api/sessions/:id/improvements/:noteId` | 과제 상태·점검·보류 이유 갱신 | 배정 검토자, 해당 세션 note만 |
 | DELETE `/api/account` | 계정 삭제 요청 | 본인 재확인, 즉시 차단+삭제 기한 |
 
 기존 `/healthz`는 스켈레톤의 생존·배포 SHA 계약으로 유지한다. 차기 DB 준비 상태 `/readyz`는 필요한 경우 별도 제공하고 DB 장애 시 503을 반환한다. 기존 `/healthz`를 DB 성공처럼 오해하거나 참가자 데이터 오류를 빈 성공 응답으로 덮지 않는다.
+
+## 사후 피드백·개선 경계 — 사용자 요청 후 추가 설계
+
+PRD D13에 따라 취소되지 않은 세션의 종료 시각부터 7일 미만 동안 작성/수정한다. 제출 자격은 종료 당시 `confirmed`였던 계정 또는 자기 호스트이며 실제 출석 증명은 아니다. 상태 변경 이력의 시각으로 종료 당시 멤버십을 판정하므로, 종료 뒤 탈퇴로 자격을 잃거나 종료 전 탈퇴자가 얻지 않는다. 종료 상태 갱신 작업 지연에도 서버 현재 시각과 이력을 사용하며 계정 삭제자는 접근 불가다. 이 자격 조회가 기존 참가자 API의 종료 제한을 우회하지 않는다.
+
+동일 세션·작성자의 Feedback 고유 제약과 version 검사로 중복·덮어쓰기를 막는다. 호스트가 참가자로 확정되어도 respondent_type은 host 하나이며 참가자 집계에서 제외한다. 주제 allowlist, 텍스트 각각 500자, 최소 하나의 응답 필드를 검증하고 비신뢰 평문으로 렌더링한다. 본인 삭제·계정 삭제·purge는 응답 제거와 집계 무효화를 함께 처리한다.
+
+피드백용 접근 규칙을 프로필 권한과 분리한다. 배정된 검토자만 세션 원문을 읽으며 응답 객체는 작성자 식별자·프로필·이메일·원본 상태 레코드를 제외한다. 검토자가 그 세션 호스트인 경우 참가자 원문 열람은 허용하지 않고 별도의 검토자를 배정해야 한다. 지원/호스트 역할만으로 전체 원문 열람을 허용하지 않는다. 접근 기록에는 원문·작성자·토큰을 넣지 않는다.
+
+호스트 집계는 현재 참가자 응답 수 5개 이상일 때 주제별 결과만 반환하고 미달 시 세부 수치·원문·제출자 목록 없이 `insufficient_responses`를 표시한다. host 응답 제외, 필터/시각별 분석 금지, 삭제 후 재검사, `no-store`를 적용한다. 검토자는 소수 응답에서도 식별 단서 없는 일반 개선 과제를 수동 작성할 수 있지만 원문을 복제·인용하지 않고 재식별 가능 내용은 전달하지 않는다. 이는 익명성 보장이 아니다.
+
+ImprovementNote는 주제·행동·담당·`reviewing/planned/implemented/deferred`·다음 점검·보류 이유만 기록한다. 담당은 작업 책임이지 호스트 평점이 아니며 사람 순위·공개 리뷰·AI 요약·외부 내보내기는 없다. 최소 배정형 검토 화면만 제안하며 전체 운영 콘솔이나 분석 서비스를 추가하지 않는다. DB 장애는 실패로 응답하고 후기 저장 성공처럼 처리하지 않는다.
+
+피드백 원문/계정 연결은 세션 종료 후 30일, 수동 비식별 메모는 작성 후 90일 purge 제안이다. 본인 삭제와 계정 삭제는 24시간 내 운영 DB에서 제거하고 기존 백업 최대 30일 및 복구 후 재삭제 계약을 적용한다. 식별 가능한 파생 메모도 삭제 대상이며 비식별 메모를 원문 보관 연장 수단으로 쓰지 않는다. 정책 확정은 G01/G02에 남긴다.
 
 ## AI 경계와 장애 계약
 
@@ -152,6 +205,7 @@ PRD D09/G02에 맞춰 종료/취소 30일 뒤 최소 기록 purge, 계정 삭제
 | AC17 | 삭제 작업·권한 회수·DB purge·백업 복구 후 재삭제를 기한별 검증 |
 | AC18–AC22 | 가짜 LLM/메일 제공자로 동의·timeout·quota·늦은 응답·악성 텍스트·비fetch 확인 |
 | AC24 | 기존 `/healthz` 계약과 이미지 SHA 검증 유지 |
+| AC25–AC29 | 종료/7일 경계·종료 당시 자격·host 중복 방지·배정 검토자 권한·집계 4/5/삭제·프로필 비재개·30/90일 purge·수동 개선 상태 검증 |
 
 설계 규모는 세션 30명·동시 20명, 준비된 일반 API p95 500ms 이하·콜드 초대 안내 10초 이하를 목표로 한다. 외부 인증·AI 지연은 별도 측정하며 실패·콜드 스타트를 제외해 좋은 수치처럼 표현하지 않는다.
 

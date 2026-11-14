@@ -19,3 +19,30 @@ article p { min-height: 72px; font-size: 15px; line-height: 1.8; color: #686158;
 button { width: 100%; padding: 12px; border: 1px solid #ddd8ce; border-radius: 8px; background: #f3f1ea; color: #746e62; font: inherit; font-size: 13px; cursor: not-allowed; }
 footer { display: flex; justify-content: space-between; gap: 16px; padding-block: 24px; border-top: 1px solid #e7e2d9; color: #686158; font-size: 12px; line-height: 1.6; }
 @media (max-width: 700px) { .shell { width: calc(100% - 32px); } .hero { padding-top: 48px; } .features { grid-template-columns: 1fr; } article p { min-height: 0; } footer { flex-direction: column; } }
+[hidden] { display: none !important; }
+.hero { padding: 40px 0 12px; }
+.panel { background: #fffefa; border: 1px solid #e7e2d9; border-radius: 16px; padding: 24px; margin: 24px 0; }
+form { display: grid; gap: 14px; margin-block: 20px; max-width: 640px; }
+label { display: grid; gap: 8px; font-size: 14px; }
+input, textarea, select { width: 100%; border: 1px solid #cbc6bb; border-radius: 8px; padding: 12px; font: inherit; background: white; color: #302c27; }
+textarea { min-height: 90px; resize: vertical; }
+.check { display: flex; align-items: flex-start; gap: 10px; line-height: 1.7; }
+.check input { width: auto; margin-top: 5px; }
+button { width: auto; cursor: pointer; background: #435739; color: #fff; margin: 3px; min-height: 42px; }
+button:disabled { cursor: not-allowed; background: #e9e6dc; color: #686158; }
+button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible { outline: 3px solid #a06b21; outline-offset: 3px; }
+.tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-block: 20px; }
+.tabs button { background: #f0eee6; color: #302c27; }
+summary { cursor: pointer; padding-block: 14px; font-weight: 600; }
+.link-row { display: grid; grid-template-columns: 1fr 2fr auto; align-items: end; gap: 10px; }
+.avatar { display: grid; place-items: center; margin-inline: auto; background: #e8edde; width: 60px; height: 60px; border-radius: 50%; font-size: 26px; }
+.profile-card { text-align: center; }
+.profile-card p { min-height: 0; white-space: pre-wrap; }
+.bio-link { display: block; border: 1px solid #e7e2d9; padding: 12px; border-radius: 10px; margin-top: 10px; color: #302c27; overflow-wrap: anywhere; }
+.team-card { display: block; width: 100%; text-align: left; background: #f0eee6; color: #302c27; }
+.team-card span { display: block; font-size: 12px; margin-top: 8px; }
+.error { color: #a42323; background: #fff0ed; padding: 12px; }
+.success { color: #34502f; }
+.pre { white-space: pre-wrap; }
+code { overflow-wrap: anywhere; }
+@media (max-width: 700px) { .link-row { grid-template-columns: 1fr; } .panel { padding: 18px; } }
