@@ -6,20 +6,21 @@
   <meta name="description" content="서울모닝커피클럽 프로필 · 팀 · 공지 인박스 미리보기">
   <title>서울모닝커피클럽 · SMCC</title>
   <link rel="stylesheet" href="/styles.css">
-  <script src="/app.js" defer></script>
+  <script src="/app.js" type="module"></script>
 </head>
 <body>
-  <header class="shell header"><a class="brand" href="/">SMCC<span>SEOUL MORNING COFFEE CLUB</span></a><span class="badge">MVP 미리보기</span></header>
+  <header class="shell header"><a class="brand" href="/">SMCC<span>SEOUL MORNING COFFEE CLUB</span></a><nav class="perspectives" aria-label="호스트·게스트 둘러보기"><a href="/host">호스트</a><a href="/guest">게스트</a><a href="/login">로그인</a></nav><span class="badge">0.5 MVP</span></header>
   <main class="shell">
     <section class="hero"><p class="eyebrow">좋은 아침, 새로운 대화.</p><h1>나를 소개하고,<br>함께할 아침을 만나요.</h1><p class="intro">링크 하나에 나의 소개와 SNS를 담고, 팀 초대와 공지를 한곳에서 확인하세요.</p><p>기존 <a href="https://smcc.global/" rel="noreferrer">smcc.global</a>과 별개의 보조 프로토타입입니다.</p></section>
+    <section id="preview" hidden aria-label="로그인 전 기능 체험"></section>
     <p id="status" class="notice" role="status">운영 상태를 확인하고 있습니다. 확인 전에는 개인정보를 입력하지 마세요.</p>
     <p id="message" role="alert" aria-live="assertive"></p>
     <section id="public-profile" hidden></section>
     <section id="invite" hidden></section>
-    <nav class="tabs" aria-label="서비스 메뉴">
+    <nav id="account-tabs" class="tabs" aria-label="서비스 메뉴" hidden>
       <button data-tab="profile">내 프로필</button><button data-tab="teams">내 팀</button><button data-tab="inbox">인박스</button><button data-tab="account">계정</button>
     </nav>
-    <section id="auth" class="panel">
+    <section id="auth" class="panel" hidden>
       <h2>로그인</h2><p>이메일 인증/SSO가 아닌 아이디·비밀번호 방식입니다.</p>
       <form id="login-form"><label>아이디<input name="username" required pattern="[a-z0-9_]{3,30}" autocomplete="username"></label><label>비밀번호<input name="password" type="password" required minlength="12" maxlength="128" autocomplete="current-password"></label><button type="submit">로그인</button></form>
       <details><summary>계정 만들기</summary>

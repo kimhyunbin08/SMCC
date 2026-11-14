@@ -6,6 +6,8 @@
 
 ## 배포 상태
 
+0.5 MVP의 [호스트 관점](https://smcc-web.wonderfulcliff-f9ca16c6.koreacentral.azurecontainerapps.io/host) / [게스트 관점](https://smcc-web.wonderfulcliff-f9ca16c6.koreacentral.azurecontainerapps.io/guest)은 로그인 없이 공유/체험할 수 있다. 가상 프로필·팀·공지 입력과 읽음은 브라우저 메모리에서만 변경되고 새로고침 시 초기화된다. 실제 이용/저장은 기능별 CTA에서 로그인한다. 공개 체험은 실제 회원/팀 데이터를 읽거나 저장하지 않고 URL로 역할 권한을 주지 않는다.
+
 초기 실제 배포: [SMCC 프로토타입 열기](https://smcc-web.wonderfulcliff-f9ca16c6.koreacentral.azurecontainerapps.io/).
 [성공한 main 자동 배포](https://github.com/kimhyunbin08/SMCC/actions/runs/43535519925)에서 이미지 빌드·OIDC 로그인·리비전 교체·라이브 SHA 확인을 완료했다. Azure CLI의 기존 조직 이메일 계정과 tenant를 확인했으며 배포는 요청한 **innodge 조직 컨텍스트**의 `smcc-rg`에 있다. 개인 이메일 주소나 인증 정보는 문서에 기록하지 않는다.
 

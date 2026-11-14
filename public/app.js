@@ -27,6 +27,7 @@ function showRecovery(code) { if (code) { $('recovery-code').textContent = code;
 async function signedIn(result) {
   currentUser = result.user; csrf = result.csrf || '';
   $('auth').hidden = Boolean(currentUser); $('dashboard').hidden = !currentUser;
+  $('account-tabs').hidden = !currentUser;
   if (!currentUser) return;
   $('welcome').textContent = `${currentUser.name}님 · ${currentUser.role === 'host' ? '호스트' : '참가자'}`;
   $('host-create').hidden = currentUser.role !== 'host';
@@ -39,6 +40,10 @@ async function signedIn(result) {
   await loadTeams();
   await loadInbox();
   profileLink();
+  const tab = new URLSearchParams(location.search).get('tab');
+  if (['profile', 'teams', 'inbox', 'account'].includes(tab)) {
+    for (const section of document.querySelectorAll('[id^=tab-]')) section.hidden = section.id !== `tab-${tab}`;
+  }
   await renderInvite();
 }
 function profileLink() {
@@ -108,6 +113,16 @@ $('refresh-inbox').onclick = task(loadInbox);
 $('hide-recovery').onclick = () => { $('recovery-code').textContent = ''; $('recovery-result').hidden = true; };
 
 async function start() {
+  if (['/', '/host', '/guest'].includes(location.pathname)) {
+    const role = location.pathname === '/host' ? 'host' : 'guest';
+    $('status').hidden = true;
+    document.querySelector(`.perspectives a[href="/${role}"]`).setAttribute('aria-current', 'page');
+    mountPreview($('preview'), role);
+    return;
+  }
+  const perspective = new URLSearchParams(location.search).get('perspective');
+  if (perspective === 'host') $('register-form').elements.role.value = 'host';
+  $('auth').hidden = false;
   const status = await request('/api/status'); storage = status.storage; $('status').textContent = status.message;
   if (!storage) {
     for (const input of document.querySelectorAll('form input,form textarea,form select,form button')) input.disabled = true;
@@ -137,3 +152,4 @@ async function renderInvite() {
   }
 }
 start().catch((error) => { $('status').textContent = '서비스 상태 확인에 실패했습니다. 개인정보를 입력하지 마세요.'; notice(error.message, true); for (const control of document.querySelectorAll('form input,form button')) control.disabled = true; });
+import { mountPreview } from './demo.js';

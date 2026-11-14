@@ -10,7 +10,7 @@ function actor(saved) {
     const response = await fetch(base + path, { method, headers: { Cookie: this.cookie, Origin: new URL(base).origin,
       'Content-Type': 'application/json', 'X-CSRF-Token': this.csrf }, body: body === undefined ? undefined : JSON.stringify(body) });
     const result = await response.json();
-    assert.equal(response.status, status, `${method} ${path}: ${JSON.stringify(result)}`);
+    assert.ok((Array.isArray(status) ? status : [status]).includes(response.status), `${method} ${path}: ${response.status} ${JSON.stringify(result)}`);
     if (response.headers.get('set-cookie')) this.cookie = response.headers.get('set-cookie').split(';')[0];
     if (result.csrf) this.csrf = result.csrf;
     return result;
@@ -45,7 +45,11 @@ if (phase === 'begin') {
   const state = JSON.parse(await readFile(statePath, 'utf8'));
   assert.equal(state.base, base);
   const [host, member, outsider] = state.users.map(actor);
-  for (const who of [host, member, outsider]) await who.call('/api/login', 'POST', { username: who.username, password: who.password });
+  const authenticated = [];
+  for (const who of [host, member, outsider]) {
+    const result = await who.call('/api/login', 'POST', { username: who.username, password: who.password }, phase === 'cleanup' ? [200, 401] : 200);
+    if (result.user) authenticated.push(who);
+  }
   if (phase === 'verify') {
     assert.equal((await host.call('/api/me')).user.links.length, 1);
     assert.equal((await member.call(`/api/teams/${state.team}`)).members.length, 2);
@@ -53,7 +57,7 @@ if (phase === 'begin') {
     await outsider.call(`/api/teams/${state.team}`, 'GET', undefined, 403);
     console.log('Live persistence E2E passed after restart: accounts/profiles/membership/announcements/read-state/isolation.');
   }
-  for (const who of [member, host, outsider]) await who.call('/api/account', 'DELETE', { password: who.password });
+  for (const who of [member, host, outsider]) if (authenticated.includes(who)) await who.call('/api/account', 'DELETE', { password: who.password });
   await unlink(statePath);
   console.log('Synthetic verification accounts, team and notices removed; local credential fixture deleted.');
 }

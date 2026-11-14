@@ -46,3 +46,10 @@ summary { cursor: pointer; padding-block: 14px; font-weight: 600; }
 .pre { white-space: pre-wrap; }
 code { overflow-wrap: anywhere; }
 @media (max-width: 700px) { .link-row { grid-template-columns: 1fr; } .panel { padding: 18px; } }
+.header { flex-wrap: wrap; gap: 16px; }
+.perspectives { display: flex; gap: 10px; flex-wrap: wrap; }
+.perspectives a, .action-link { display: inline-block; padding: 12px 16px; border-radius: 8px; color: #302c27; background: #f0eee6; text-decoration: none; }
+.perspectives a[aria-current="page"], .action-link { background: #435739; color: white; }
+.demo-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: 16px; }
+#preview p { line-height: 1.8; overflow-wrap: anywhere; }
+#preview .profile-card { max-width: 440px; margin-block: 20px; }

@@ -7,6 +7,24 @@ import { createApp } from '../src/server.js';
 import { openDatabase, StoreConflict } from '../src/database.js';
 import { tableStore } from '../src/table-store.js';
 import { username, password, text } from '../src/api.js';
+import { createDemo, previewHtml } from '../public/demo.js';
+
+test('unit: public perspectives render only synthetic escaped examples and contextual login', () => {
+  const host = createDemo('host'), guest = createDemo('guest');
+  assert.notEqual(host, createDemo('host'));
+  assert.throws(() => createDemo('admin'));
+  assert.match(previewHtml(host), /demo-team-form/);
+  assert.match(previewHtml(host), /demo-announcement-form/);
+  assert.match(previewHtml(host), /\/login\?perspective=host&tab=teams/);
+  assert.match(previewHtml(guest), /demo-profile-form/);
+  assert.match(previewHtml(guest), /demo-join-form/);
+  assert.match(previewHtml(guest), /demo-read/);
+  assert.match(previewHtml(guest), /서버에 전송·저장되지/);
+  guest.name = '<script>attack</script>'; guest.joined = true; guest.share = true; guest.read = true;
+  assert.doesNotMatch(previewHtml(guest), /<script>attack/);
+  assert.match(previewHtml(guest), /&lt;script&gt;attack/);
+  assert.match(previewHtml(guest), /읽음 · 가상/);
+});
 
 test('unit: username/password/Unicode boundaries reject malformed input', () => {
   assert.equal(username('test_user'), 'test_user');
@@ -91,7 +109,15 @@ test('integration: allowlist, health, policies and no-store failures are truthfu
   assert.equal(page.status, 200); assert.match(await page.text(), /서울모닝커피클럽/);
   assert.match(page.headers.get('content-security-policy'), /frame-ancestors 'none'/);
   for (const path of ['/src/api.js', '/.env', '/PRD.md', '/package-lock.json', '/missing', '/%2e%2e/ideation.md']) assert.equal((await fetch(base + path)).status, 404);
-  for (const path of ['/styles.css', '/app.js', '/privacy', '/terms']) assert.equal((await fetch(base + path)).status, 200);
+  for (const path of ['/styles.css', '/app.js', '/demo.js', '/privacy', '/terms', '/host', '/guest', '/login']) assert.equal((await fetch(base + path)).status, 200);
+  for (const path of ['/host', '/guest']) {
+    const page = await fetch(base + path);
+    const html = await page.text();
+    assert.match(html, /href="\/host"/);
+    assert.match(html, /href="\/guest"/);
+    assert.match(html, /id="auth" class="panel" hidden/);
+    assert.equal((await fetch(base + path, { method: 'POST' })).status, 405);
+  }
   assert.match(await (await fetch(base + '/privacy')).text(), /시험 운영자/);
   assert.deepEqual(await actor().call('/healthz'), { status: 'ok', service: 'smcc', revision: process.env.APP_REVISION || 'local' });
   assert.equal((await actor().call('/readyz', 'GET', undefined, 503)).ready, false);
@@ -111,6 +137,7 @@ test('HTTP E2E: auth → profiles → invite/capacity/isolation → inbox/read �
   await register(b, 'second_test');
   await register(otherHost, 'other_host', 'host');
   await anonymous.call('/api/teams', 'GET', undefined, 401);
+  await anonymous.call('/api/teams', 'POST', { title: 'URL is not authorization' }, 401);
   await host.call('/api/profile', 'PUT', { name: '호스트', bio: '소개', links: [{ label: 'SNS', url: 'javascript:alert(1)' }], public: false }, 400);
   await host.call('/api/profile', 'PUT', { name: '호스트', bio: '소개', links: [], public: true }, 403, { Origin: 'https://evil.invalid' });
   await host.call('/api/profile', 'PUT', { name: '호스트', bio: '소개', links: [], public: true }, 403, { 'X-CSRF-Token': 'wrong' });

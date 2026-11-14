@@ -2,6 +2,12 @@
 
 ## 현재 기본 MVP 기술 계약
 
+### 0.5 MVP 공개 체험
+
+`/`, `/host`, `/guest`, `/login`은 기존 allowlist HTML shell을 제공한다. `public/app.js`는 공개 관점 경로에서 `public/demo.js`를 메모리 전용으로 렌더링하고 status/me/team/inbox 등 API를 호출하지 않는다. 로그인 폼과 실제 계정 탭은 숨기고 실사용 CTA는 `/login?perspective=host|guest&tab=profile|teams|inbox`로 이동한다. 로그인 성공 후 실제 계정 데이터/역할과 allowlist 탭을 사용한다. URL 역할을 서버 auth/role로 승격하지 않는다.
+
+가상 체험 상태는 해당 페이지 인스턴스의 변수이며 localStorage/cookie/DB에 저장하지 않는다. 체험 데이터는 직접 작성한 가상 예시이고 임의 HTML은 escape한다. 변경 시 서버 저장이 아니라는 상태 안내를 제공한다. 모듈 스크립트와 `/demo.js`만 추가로 allowlist한다. 실제 초대 경로와 프로필 공개 API의 권한/동의 동작은 그대로 유지한다.
+
 단일 Node.js 24 HTTP 앱과 HTML/CSS/JavaScript를 유지한다. 메일·LinkedIn 앱이 없으므로 이메일 OTP/SSO/가져오기는 구현하지 않는다. Azure 인증·Table 데이터 접근에만 공식 `@azure/identity`, `@azure/data-tables` SDK와 lockfile을 사용하며 프런트엔드 빌드는 없다.
 
 `src/database.js`는 로컬 SQLite key/value 레코드를 파일/WAL/Compose 볼륨에 저장한다. `src/table-store.js`는 동일한 `get/list/create/mutate/remove/check` 계약을 Azure Table에 구현한다. `users`, `sessions`, `teams`, `announcements`, `receipts`, `rates`는 별도 partition이며 팀의 최대 30명 멤버십은 동일 entity 안에 있어 정원·초대 회전·탈퇴를 ETag 조건부 Replace로 원자 처리한다. 충돌은 최신 데이터를 읽어 유한 재시도하며 장애를 빈 성공으로 바꾸지 않는다.
