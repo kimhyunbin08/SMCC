@@ -4,7 +4,7 @@
 
 ### 0.5 MVP 공개 체험
 
-`/`, `/host`, `/guest`, `/login`은 기존 allowlist HTML shell을 제공한다. `public/app.js`는 공개 관점 경로에서 `public/demo.js`를 메모리 전용으로 렌더링하고 status/me/team/inbox 등 API를 호출하지 않는다. 로그인 폼과 실제 계정 탭은 숨기고 실사용 CTA는 `/login?perspective=host|guest&tab=profile|teams|inbox`로 이동한다. 로그인 성공 후 실제 계정 데이터/역할과 allowlist 탭을 사용한다. URL 역할을 서버 auth/role로 승격하지 않는다.
+`/`, `/host`, `/guest`, `/login`은 allowlist HTML shell을 제공한다. `public/app.js`는 공개 관점에서 `public/demo.js`를 메모리 전용으로 렌더링하고 API를 호출하지 않는다. 실사용 CTA는 `/service`의 비회원 탐색 탭으로 이동한다. 회원 작업/신청 선택 시 `/login?tab=...&chat=...`로 이동하고 성공 후 allowlist `/service` 내부 탭·선택 모임으로 복귀한다. URL 역할을 서버 auth/role로 승격하지 않는다.
 
 가상 체험 상태는 해당 페이지 인스턴스의 변수이며 localStorage/cookie/DB에 저장하지 않는다. 체험 데이터는 직접 작성한 가상 예시이고 임의 HTML은 escape한다. 변경 시 서버 저장이 아니라는 상태 안내를 제공한다. 모듈 스크립트와 `/demo.js`만 추가로 allowlist한다. 실제 초대 경로와 프로필 공개 API의 권한/동의 동작은 그대로 유지한다.
 
@@ -34,6 +34,29 @@
 Azure는 `smcc-rg`의 `smccdata116481c1a3` Standard_LRS/한국 중부와 `smccdata` table을 사용한다. Shared Key는 비활성, HTTPS/TLS1.2 필수, 기존 앱 identity에 해당 table 범위의 Storage Table Data Contributor만 부여한다. `TABLE_ENDPOINT`, `TABLE_NAME`, `STORAGE_CLIENT_ID`, `PUBLIC_ORIGIN`, 운영자/문의 secretref, `REGISTRATION_ENABLED`를 설정한다. 저장소 없을 때 임시 디스크로 대체하지 않는다.
 
 **이후의 Phase 0/Phase 1은 보존된 이전 구조·확장 제안으로, 현재 API/동의/역할/스토리지와 다른 경우 이 절이 우선한다.**
+
+### 공개 탐색·비회원 신청 계약
+
+추가 allowlist는 `/service`, `/application`, `/ui.js`, `/service.js`다. 공개 목록은 `listed===true`인 소유 호스트 선택 게시만 반환하고 기존 필드 없는 팀은 비공개다. DTO는 id/제목/UTC 일정/별도 공개 장소/정원·합계·신청 가능 여부만 포함하며 `place`·개인 자료·초대 hash·신청 map·공지 등은 제외한다. 카페는 공개 장소만 중복 제거한 호스트 안내이며 외부 레지스트리가 아니다.
+
+| 추가 API | 권한·계약 |
+| --- | --- |
+| GET `/api/public/teams`, `/api/public/teams/:id` | 호스트 선택 공개 팀 DTO. 목록은 종료/닫기·삭제 호스트 제외 |
+| PUT `/api/teams/:id/publication` | 소유 호스트 공개 ON/OFF·별도 공개 장소1~80자. 자동 공개 없음 |
+| POST `/api/public/teams/:id/join` | 로그인·고지 확인·선택 팀 공유·원자 정원 검사 |
+| POST `/api/guest/applications` | 공개 팀/유효 초대, name1~40·bio0~200·consent/age, 시작 전/닫기/정원 검사 |
+| POST `/api/guest/status`, `/api/guest/withdraw` | teamId+난수 receiptToken의 해당 신청만 조회/철회. 회원 자격 없음 |
+| POST `/api/teams/:id/guest-applications/:hash` | 소유 호스트만 시작 전 접수 확정/거절 |
+
+`guest_applications[SHA256(receiptToken)]`를 팀 entity에 저장한다. 원문32byte 난수(43자 base64url)는 저장/로그하지 않는다. `received`, `confirmed`는 좌석 사용, `rejected`, `withdrawn`은 해제한다. 정원≤30·누적 비회원 기록≤64; 거절/철회는 name/bio 삭제 후 hash/상태/생성 시각만 보관한다. 이 상한과 최대 Unicode 입력의 UTF-16 직렬화 크기를64KiB 미만으로 검증한다. 회원+비회원 마지막 좌석은 동일 ETag mutation으로 경합한다. 호스트 팀 생성20/시간·새 비회원 접수5/IP/시간, 기존 receipt 재시도는 중복 신청 없음이다.
+
+관리 URL은 `/application?team=<uuid>#<receiptToken>`이며 비밀은 fragment에만 둔다. HTTP path/query/referrer에 보내지 않고 JSON body로 전달한다. 페이지는 no-store/no-referrer이고 외부 분석 호출은 없다. 공개 해제 후에도 본인 최소 상태만 조회하며 삭제/30일 만료는404다. 링크 분실 자동 복구·메일은 제공하지 않는다.
+
+회원 공개/초대 가입 뒤 최신 계정 인증을 재확인하고 동시 삭제된 멤버십을 보상 제거한다. 세션 생성 전후 auth_version 재확인, 프로필 DTO `profileVersion` 및 기대 버전 불일치409, UI는 항상 버전 전송이다. 멤버십 generation을 읽음에 연결해 탈퇴/재가입의 과거 읽음을 상속하지 않는다. 유지보수/탈퇴 receipt·rate 삭제도 조건부 mutation으로 새 기록을 보존한다. `mutate` null은 조건부 삭제/없으면 no-op, JSON null 저장이 아니다. Azure404/409/412만 유한 재시도하고 장애는 실패다.
+
+개발 전용 Playwright 모바일 Chromium E2E는3190의 격리 가상 메모리 DB 서버로 실 기록·rate를 건드리지 않는다. 브라우저 다운로드/보고서는 저장소 내부 ignore 경로, 운영 이미지에서는 제외한다. CI는 단위/통합·브라우저 E2E를 통과한 SHA만 배포한다.
+
+배포 후 실제 Azure URL에서 가상 호스트/회원2명·비회원 접수/재시도·권한 분리를 확인한다. 현재 SMCC 리비전만 재시작하고 영속 계정/프로필/공개 목록/신청/공지/읽음을 확인한 뒤 확정/철회·계정/팀 fixture를 삭제한다. 실패 cleanup trap을 두며 실제 사용자 데이터를 읽거나 정리하지 않는다. 재시작에 따른 짧은 중단/콜드 스타트가 있다.
 
 ## 상태와 적용 범위
 

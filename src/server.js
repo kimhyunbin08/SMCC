@@ -10,6 +10,8 @@ const assets = new Map([
   ['/styles.css', ['../public/styles.css', 'text/css; charset=utf-8']],
   ['/app.js', ['../public/app.js', 'text/javascript; charset=utf-8']],
   ['/demo.js', ['../public/demo.js', 'text/javascript; charset=utf-8']],
+  ['/ui.js', ['../public/ui.js', 'text/javascript; charset=utf-8']],
+  ['/service.js', ['../public/service.js', 'text/javascript; charset=utf-8']],
   ['/privacy', ['../PRIVACY.md', 'text/plain; charset=utf-8']],
   ['/terms', ['../TERMS.md', 'text/plain; charset=utf-8']],
 ]);
@@ -75,7 +77,7 @@ export function createApp(options = {}) {
       if (!['GET', 'HEAD'].includes(req.method)) {
         res.writeHead(405, { Allow: 'GET, HEAD' }); res.end(); return;
       }
-      const entry = assets.get(pathname) || (['/host', '/guest', '/login'].includes(pathname) || /^\/(?:invite\/[A-Za-z0-9_-]{43}|p\/[a-z0-9_]{3,30})$/.test(pathname) ? assets.get('/') : null);
+      const entry = assets.get(pathname) || (['/host', '/guest', '/login', '/service', '/application'].includes(pathname) || /^\/(?:invite\/[A-Za-z0-9_-]{43}|p\/[a-z0-9_]{3,30})$/.test(pathname) ? assets.get('/') : null);
       if (!entry) { res.writeHead(404); res.end(req.method === 'HEAD' ? undefined : 'Not found'); return; }
       let content = await readFile(new URL(entry[0], import.meta.url));
       if (['/privacy', '/terms'].includes(pathname)) {

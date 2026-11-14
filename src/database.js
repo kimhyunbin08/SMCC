@@ -31,7 +31,8 @@ export function openDatabase(path) {
       try {
         const row = read.get(namespace, id), current = row ? JSON.parse(row.value) : null;
         const value = change(current);
-        if (row) write.run(JSON.stringify(value), namespace, id);
+        if (value === null) remove.run(namespace, id);
+        else if (row) write.run(JSON.stringify(value), namespace, id);
         else insert.run(namespace, id, JSON.stringify(value));
         db.exec('COMMIT');
         return value;

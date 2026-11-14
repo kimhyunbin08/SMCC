@@ -9,16 +9,18 @@
   <script src="/app.js" type="module"></script>
 </head>
 <body>
-  <header class="shell header"><a class="brand" href="/">SMCC<span>SEOUL MORNING COFFEE CLUB</span></a><nav class="perspectives" aria-label="호스트·게스트 둘러보기"><a href="/host">호스트</a><a href="/guest">게스트</a><a href="/login">로그인</a></nav><span class="badge">0.5 MVP</span></header>
+  <header class="shell header"><a class="brand" href="/">SMCC<span>SEOUL MORNING COFFEE CLUB</span></a><nav class="perspectives" aria-label="호스트·게스트 둘러보기"><a href="/host">호스트</a><a href="/guest">게스트</a><a id="service-cta" class="action-link" href="/service">서비스로 이동하기</a></nav><span class="badge">0.5 MVP</span></header>
   <main class="shell">
     <section class="hero"><p class="eyebrow">좋은 아침, 새로운 대화.</p><h1>나를 소개하고,<br>함께할 아침을 만나요.</h1><p class="intro">링크 하나에 나의 소개와 SNS를 담고, 팀 초대와 공지를 한곳에서 확인하세요.</p><p>기존 <a href="https://smcc.global/" rel="noreferrer">smcc.global</a>과 별개의 보조 프로토타입입니다.</p></section>
     <section id="preview" hidden aria-label="로그인 전 기능 체험"></section>
+    <nav id="service-tabs" class="tabs" aria-label="서비스 상단 메뉴" hidden><a href="/service?tab=home" data-service-tab="home">홈</a><a href="/service?tab=coffees" data-service-tab="coffees">커피챗</a><a href="/service?tab=cafes" data-service-tab="cafes">카페</a><a href="/service?tab=profile" data-service-tab="profile">프로필</a></nav>
+    <section id="service-content" hidden aria-live="polite"></section>
     <p id="status" class="notice" role="status">운영 상태를 확인하고 있습니다. 확인 전에는 개인정보를 입력하지 마세요.</p>
     <p id="message" role="alert" aria-live="assertive"></p>
     <section id="public-profile" hidden></section>
     <section id="invite" hidden></section>
     <nav id="account-tabs" class="tabs" aria-label="서비스 메뉴" hidden>
-      <button data-tab="profile">내 프로필</button><button data-tab="teams">내 팀</button><button data-tab="inbox">인박스</button><button data-tab="account">계정</button>
+      <button data-tab="profile" aria-controls="tab-profile">내 프로필</button><button data-tab="teams" aria-controls="tab-teams">내 팀</button><button data-tab="inbox" aria-controls="tab-inbox">인박스</button><button data-tab="account" aria-controls="tab-account">계정</button>
     </nav>
     <section id="auth" class="panel" hidden>
       <h2>로그인</h2><p>이메일 인증/SSO가 아닌 아이디·비밀번호 방식입니다.</p>
@@ -32,17 +34,17 @@
     </section>
     <section id="dashboard" hidden>
       <p id="welcome"></p><button id="logout">로그아웃</button>
-      <section id="tab-profile" class="panel">
+      <section id="tab-profile" class="panel" tabindex="-1">
         <h2>나의 링크 프로필</h2><p>별칭과 소개, 여러 SNS 주소를 담으세요. URL의 내용을 가져오거나 사실을 검증하지 않습니다.</p>
         <form id="profile-form"><label>호칭<input name="name" required maxlength="40"></label><label>한 줄 소개<textarea name="bio" maxlength="200"></textarea></label><div id="link-fields"></div><button type="button" id="add-link">SNS 링크 추가 (최대 6개)</button><label class="check"><input name="public" type="checkbox">호칭·소개·SNS 전체를 인터넷에 공개 (선택)</label><p>공개 링크는 누구나 볼 수 있습니다. 공개를 철회해도 이미 복사한 내용은 회수할 수 없습니다. 수정은 공개 프로필과 공유 중인 팀에도 반영됩니다.</p><button type="submit">프로필 저장</button></form><p id="profile-link"></p>
-        <button disabled>LinkedIn 기본정보 연결 · 미설정</button><p>현재는 LinkedIn/SNS 주소 직접 등록만 지원합니다. 공식 LinkedIn 개발자 앱과 OIDC 제품 승인·자격증명이 필요합니다. 경력·학력 전체를 가져오는 MCP는 연결하지 않았습니다.</p>
+        <button id="reload-profile" type="button">저장된 프로필 다시 불러오기</button><button disabled>LinkedIn 기본정보 연결 · 미설정</button><p>현재는 LinkedIn/SNS 주소 직접 등록만 지원합니다. 공식 LinkedIn 개발자 앱과 OIDC 제품 승인·자격증명이 필요합니다. 경력·학력 전체를 가져오는 MCP는 연결하지 않았습니다.</p>
       </section>
-      <section id="tab-teams" class="panel" hidden><h2>내 팀</h2><div id="team-list"></div>
-        <details id="host-create" hidden><summary>호스트 팀 만들기</summary><form id="team-form"><label>팀 이름<input name="title" required maxlength="80"></label><label>장소 (팀 멤버만 열람)<input name="place" required maxlength="160"></label><label>시작<input name="startsAt" type="datetime-local" required></label><label>종료<input name="endsAt" type="datetime-local" required></label><label>정원 (호스트 포함)<input name="capacity" type="number" min="1" max="30" value="8" required></label><label class="check"><input name="share" type="checkbox">내 프로필 전체를 이 팀 멤버에게 공유 (선택)</label><button type="submit">팀 만들기</button></form></details>
+      <section id="tab-teams" class="panel" tabindex="-1" hidden><h2>내 팀</h2><button id="refresh-teams" type="button">팀 목록 새로고침</button><div id="team-list"></div>
+        <details id="host-create" hidden><summary>호스트 팀 만들기</summary><form id="team-form"><label>팀 이름<input name="title" required maxlength="80"></label><label>장소 (팀 멤버만 열람)<input name="place" required maxlength="160"></label><label>시작<input name="startsAt" type="datetime-local" required></label><label>종료<input name="endsAt" type="datetime-local" required></label><label>정원 (호스트 포함)<input name="capacity" type="number" min="1" max="30" value="8" required></label><label class="check"><input name="share" type="checkbox">내 프로필 전체를 이 팀 멤버에게 공유 (선택)</label><label class="check"><input name="listed" type="checkbox">커피챗 공개 목록에 제목·일정·정원·공개 장소 안내를 게시 (선택)</label><label>공개 장소 안내 (공개 목록 선택 시 필수, 상세 장소와 별도)<input name="publicPlace" maxlength="80" placeholder="예: 합정역 근처 카페 · 호스트 안내"></label><p>기본은 초대 전용입니다. 공개하지 않은 팀과 상세 장소는 서비스 목록에 표시되지 않습니다.</p><button type="submit">팀 만들기</button></form></details>
         <div id="team-detail"></div>
       </section>
-      <section id="tab-inbox" class="panel" hidden><h2>팀 공지 인박스</h2><p>현재 소속 팀의 공지만 표시됩니다. 새로고침하여 새 공지를 확인하세요.</p><button id="refresh-inbox">공지 확인</button><div id="inbox-list"></div></section>
-      <section id="tab-account" class="panel" hidden><h2>계정 관리</h2>
+      <section id="tab-inbox" class="panel" tabindex="-1" hidden><h2>팀 공지 인박스</h2><p>현재 소속 팀의 공지만 표시됩니다. 새로고침하여 새 공지를 확인하세요.</p><button id="refresh-inbox">공지 확인</button><div id="inbox-list"></div></section>
+      <section id="tab-account" class="panel" tabindex="-1" hidden><h2>계정 관리</h2>
         <form id="password-form"><label>현재 비밀번호<input name="password" type="password" required autocomplete="current-password"></label><label>새 비밀번호<input name="newPassword" type="password" required minlength="12" maxlength="128" autocomplete="new-password"></label><button type="submit">비밀번호·복구 코드 교체</button></form>
         <details><summary>계정 삭제</summary><p>프로필·세션·참가·읽음 기록이 삭제됩니다. 호스트의 팀과 그 팀 공지도 삭제됩니다. 복구할 수 없습니다.</p><form id="delete-form"><label>현재 비밀번호<input name="password" type="password" required autocomplete="current-password"></label><label class="check"><input type="checkbox" required>영구 삭제를 확인합니다.</label><button type="submit">계정 영구 삭제</button></form></details>
       </section>

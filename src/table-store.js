@@ -35,11 +35,13 @@ export function tableStore(client) {
         const current = await read(namespace, id);
         const value = change(current ? decode(current) : null);
         try {
-          if (current) await client.updateEntity(entity(namespace, id, value), 'Replace', { etag: current.etag });
+          if (value === null) {
+            if (current) await client.deleteEntity(namespace, id, { etag: current.etag });
+          } else if (current) await client.updateEntity(entity(namespace, id, value), 'Replace', { etag: current.etag });
           else await client.createEntity(entity(namespace, id, value));
           return value;
         } catch (error) {
-          if (![409, 412].includes(error.statusCode)) throw error;
+          if (![404, 409, 412].includes(error.statusCode)) throw error;
         }
       }
       throw new StoreUnavailable('Concurrent update retry limit reached');

@@ -11,3 +11,6 @@ coverage/
 *.sqlite-shm
 /.mvp-verification.json
 /.test-*.sqlite*
+/.playwright-browsers/
+/test-results/
+/playwright-report/

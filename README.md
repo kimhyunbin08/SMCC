@@ -6,14 +6,22 @@
 
 ## 배포 상태
 
-0.5 MVP의 [호스트 관점](https://smcc-web.wonderfulcliff-f9ca16c6.koreacentral.azurecontainerapps.io/host) / [게스트 관점](https://smcc-web.wonderfulcliff-f9ca16c6.koreacentral.azurecontainerapps.io/guest)은 로그인 없이 공유/체험할 수 있다. 가상 프로필·팀·공지 입력과 읽음은 브라우저 메모리에서만 변경되고 새로고침 시 초기화된다. 실제 이용/저장은 기능별 CTA에서 로그인한다. 공개 체험은 실제 회원/팀 데이터를 읽거나 저장하지 않고 URL로 역할 권한을 주지 않는다.
+0.5 MVP의 [호스트 관점](https://smcc-web.wonderfulcliff-f9ca16c6.koreacentral.azurecontainerapps.io/host) / [게스트 관점](https://smcc-web.wonderfulcliff-f9ca16c6.koreacentral.azurecontainerapps.io/guest)은 로그인 없이 가상 기능을 공유/체험한다. 메모리 변경만 사용하고 실제 데이터를 읽거나 권한을 주지 않는다. `서비스로 이동하기`는 [실제 서비스](https://smcc-web.wonderfulcliff-f9ca16c6.koreacentral.azurecontainerapps.io/service)의 비회원 탐색을 연다.
 
 초기 실제 배포: [SMCC 프로토타입 열기](https://smcc-web.wonderfulcliff-f9ca16c6.koreacentral.azurecontainerapps.io/).
 [성공한 main 자동 배포](https://github.com/kimhyunbin08/SMCC/actions/runs/43535519925)에서 이미지 빌드·OIDC 로그인·리비전 교체·라이브 SHA 확인을 완료했다. Azure CLI의 기존 조직 이메일 계정과 tenant를 확인했으며 배포는 요청한 **innodge 조직 컨텍스트**의 `smcc-rg`에 있다. 개인 이메일 주소나 인증 정보는 문서에 기록하지 않는다.
 
 GitHub 저장소는 [kimhyunbin08/SMCC](https://github.com/kimhyunbin08/SMCC)를 유지한다. 기존 smcc.global 도메인이나 다른 프로젝트 리소스는 변경하지 않았다. 새로운 조직 로그인이나 리소스 이동은 필요하지 않으며, main push 자동 배포를 그대로 사용할 수 있다.
 
-## 로컬 실행
+## 실제 서비스 이용
+
+홈/커피챗/카페/프로필 탭을 비회원으로 탐색한다. 호스트는 로그인 후 커피챗 탭에서 팀을 만들고 **공개 목록 게시**를 별도 선택한다. 과거 초대 전용 팀은 비공개 유지, 제목·일정·별도 공개 장소·정원 합계만 게시한다. 상세 장소/카드/신청/인박스는 공개 탐색에서 숨긴다. 카페는 호스트 제공 공개 장소 안내이며 검증된 카페 목록이 아니다.
+
+신청은 **비회원으로 신청 / 로그인하고 신청**이다. 비회원 별칭·선택 소개·동의/14세 이상 확인을 실제 저장하고 호스트가 자기 팀 접수를 확정/거절한다. 난수 관리 링크로 상태 확인/철회, 분실 자동 복구·메일은 없다. 확정해도 카드/상세 장소/인박스 권한이 생기지 않는다. 기존 호스트 안내 채널로 연락/장소를 확인한다. 회원은 로그인 후 원래 커피챗에서 고지 확인·직접 참여한다.
+
+대기/확정 비회원과 회원/호스트가 정원 공유, 접수≠참석 확정이다. 거절/철회는 좌석 해제·이름/소개 삭제, 최소 상태는 종료+30일 정리다. 누적64개/팀·새 접수5/IP/시간 제한이 있다.
+
+## 로컬 실행 방법
 
 Node.js 24 이상(실제 기능은 Compose 권장):
 
@@ -35,7 +43,18 @@ docker compose down
 
 SQLite 파일은 `smcc-data` named volume에 저장되어 컨테이너 교체 후에도 유지된다. `down --volumes`는 데이터를 없애므로 사용하지 않는다. 로컬에는 가상 정보만 입력한다. `APP_MODE`/스토리지 설정 없이 실행하면 읽기 전용이다.
 
-단위·통합·HTTP E2E는 `npm test`로 실행한다. 실제 컨테이너/배포 E2E와 재시작 영속성은:
+이전 시험의 가입 제한이 남아 있으면 실제/기존 볼륨을 지우거나 rate를 완화하지 않고 `HOST_PORT=3187 docker compose -p smcc-e2e up --build -d --wait`로 격리 시험 프로젝트를 실행한다. 먼저 같은 포트의 기본 Compose를 종료한다. 시험 후 가상 fixture를 cleanup/verify로 삭제하고 `HOST_PORT=3187 docker compose -p smcc-e2e down`한다.
+
+단위·통합·HTTP E2E는 `npm test`로 실행한다.
+
+모바일 브라우저 E2E(가상 메모리 DB,3190)는 아래로 실행한다. 브라우저는 SMCC 내부 ignore 경로에 설치하고 CI도 이 테스트 통과 후 배포한다.
+
+```bash
+PLAYWRIGHT_BROWSERS_PATH="$PWD/.playwright-browsers" npx playwright install chromium
+PLAYWRIGHT_BROWSERS_PATH="$PWD/.playwright-browsers" npm run test:browser
+```
+
+실제 컨테이너/배포 E2E와 재시작 영속성은:
 
 ```bash
 TEST_BASE_URL=http://localhost:3000 npm run test:live
@@ -44,6 +63,10 @@ TEST_BASE_URL=http://localhost:3000 TEST_PHASE=verify npm run test:live
 ```
 
 가상 계정만 만들며 `.mvp-verification.json`은 chmod600/ignore 대상이다. verify는 프로필·멤버십·공지·읽음을 확인하고 계정/팀과 fixture를 삭제한다. 중간 실패 시 원인을 고친 뒤 verify 또는 `TEST_PHASE=cleanup`을 실행한다. 복구 코드/암호를 로그·GitHub에 올리지 않는다.
+
+`TEST_SCOPE=service`는 가상 호스트/회원2명과 비회원 영속 접수·중복 재시도·공개 필터·확정/철회까지 검사한다. verify는 재시작 뒤 신청/공지/읽음 보존을 확인하고 전부 정리한다. 가입5/IP/시간 제한으로 반복 시험이 막히면 보호를 낮추지 말고 만료 후 다시 시도한다.
+
+main 배포 CI도 이 가상 회원/비회원 E2E를 수행하고 해당 SMCC 리비전만 재시작해 영속성을 확인한 뒤 fixture를 삭제한다. 잠깐의 재시작/콜드 스타트가 있을 수 있다. 실패 시 cleanup을 시도하고 배포 검증을 성공으로 표시하지 않는다. 실제 회원 자료를 시험 대상으로 쓰지 않는다.
 
 ## 영속 저장·운영 설정
 

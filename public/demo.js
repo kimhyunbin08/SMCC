@@ -11,7 +11,7 @@ export function createDemo(role) {
 
 export function previewHtml(state) {
   const host = state.role === 'host';
-  const cta = (tab, label) => `<a class="action-link" href="/login?perspective=${state.role}&tab=${tab}">${label}</a>`;
+  const cta = (tab, label) => `<a class="action-link" href="/service?perspective=${state.role}&tab=${tab}">서비스로 이동하기 · ${label}</a>`;
   const profile = `<article class="profile-card"><div class="avatar">아</div><h3>${escape(state.name)}</h3><p>${escape(state.bio)}</p><span class="bio-link">Instagram · 가상 SNS 링크</span><span class="bio-link">LinkedIn · URL 직접 등록 예시</span></article>`;
   return `<p class="notice"><strong>로그인 없이 보는 ${host ? '호스트' : '게스트'} 체험</strong><br>모든 인물·팀·공지는 가상 예시입니다. 이 화면의 입력과 변경은 서버에 전송·저장되지 않고 새로고침하면 사라집니다. 실제 개인정보를 입력하지 마세요.</p>
     <h2>${host ? '내 모임을 만들고, 초대하고, 공지해요.' : '나를 소개하고, 함께할 사람들을 만나요.'}</h2>
@@ -21,7 +21,7 @@ export function previewHtml(state) {
       : `<section class="panel"><h3>1. 내 링크 프로필</h3><form id="demo-profile-form"><label>가상 호칭<input name="name" required maxlength="40" value="${escape(state.name)}"></label><label>가상 소개<textarea name="bio" maxlength="200">${escape(state.bio)}</textarea></label><button type="submit">가상 프로필 바꿔보기</button></form><div id="demo-profile">${profile}</div><p>실제 프로필에는 SNS 주소 최대 6개를 등록합니다. 인터넷 공개와 팀 공유는 각각 선택이며 기본 비공개입니다. LinkedIn 자동 가져오기·AI는 미설정입니다.</p>${cta('profile', '내 프로필을 저장하려면 로그인')}</section>
       <section class="panel"><h3>2. 초대받은 팀에 참여</h3><p>${escape(state.team)} · 토요일 08:00~09:00 · 가상 정원 3/8</p><p>실제 초대에서는 가입 전 상세 장소·타인 프로필이 보이지 않습니다.</p><form id="demo-join-form"><label class="check"><input name="share" type="checkbox" ${state.share ? 'checked' : ''}>가상 프로필을 이 샘플 팀에 공유해보기 (선택)</label><button type="submit">${state.joined ? '가상 공유 선택 바꾸기' : '가상 팀 참여해보기'}</button></form><div id="demo-members" ${state.joined ? '' : 'hidden'}><p>가상 참여 상태 · ${escape(state.place)}</p><h3>3. 공유에 동의한 가상 멤버</h3><div class="demo-grid"><article><h4>커피 호스트 (가상)</h4><p>다양한 아침 이야기를 나눠요.</p></article><article><h4>독서 친구 (가상)</h4><p>책과 일상에 대해 대화하고 싶어요.</p></article>${state.share ? profile : '<p>내 가상 프로필은 공유 OFF입니다. 공유하지 않아도 참여와 공지 확인은 가능합니다.</p>'}</div><p>공유 미동의자의 카드·실제 회원 데이터는 이 체험에 표시하지 않습니다.</p></div>${cta('teams', '로그인 후 실제 초대 링크로 참여')}</section>
       <section class="panel"><h3>4. 팀 공지 인박스</h3><article><span class="badge" id="demo-read-state">${state.read ? '읽음 · 가상' : '새 공지 · 가상'}</span><h4>내일 아침 안내 (가상)</h4><p>${escape(state.announcement)}</p><button id="demo-read" type="button">${state.read ? '가상 읽음 표시 취소' : '가상 공지 읽음으로 표시'}</button></article><p>실제 인박스는 현재 소속 팀 공지만 보여주고 내 읽음 상태를 저장합니다.</p>${cta('inbox', '내 인박스를 이용하려면 로그인')}</section>`}
-    <p id="demo-message" role="status" aria-live="polite"></p><button id="demo-reset" type="button">체험 초기화</button>`;
+    <p id="demo-message" role="status" aria-live="polite" tabindex="-1"></p><button id="demo-reset" type="button">체험 초기화</button>`;
 }
 
 export function mountPreview(element, role) {
@@ -31,6 +31,7 @@ export function mountPreview(element, role) {
     element.hidden = false;
     const find = (id) => element.querySelector(`#${id}`);
     find('demo-message').textContent = message;
+    if (message) find('demo-message').focus();
     function bind(id, action) {
       const form = find(id);
       if (form) form.onsubmit = (event) => {

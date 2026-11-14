@@ -10,6 +10,8 @@ Limit file work to this SMCC folder and repository `kimhyunbin08/SMCC`. Do not i
 
 ## Conventions
 
+Latest user requirements keep synthetic previews separate from anonymously browsable Home/Coffee chats/Cafes/Profile service tabs. Coffee-chat applications offer guest receipt or authenticated-member paths. Public listing requires host opt-in. Guest receipt possession never grants membership/host access. Guest/member seats share atomic capacity; cafes are host-provided guidance, not scraped/verified listings.
+
 - Use Node.js 24 LTS and plain HTML/CSS/JavaScript; official Azure identity/Table SDKs are the only runtime dependencies.
 - Keep UI copy in Korean, responsive and accessible. Do not add fake working flows.
 - Serve only allowlisted public assets; never expose source, documents or environment files.
@@ -22,6 +24,8 @@ Limit file work to this SMCC folder and repository `kimhyunbin08/SMCC`. Do not i
 ## Validation
 
 Run `npm ci --ignore-scripts`, `npm test` and `docker compose config --quiet`. For container changes, also run `docker compose up --build -d --wait`, verify `/`, `/healthz` and the actual MVP workflow, then `docker compose down` without deleting the data volume. Use `HOST_PORT=3187` when port 3000 is occupied. There is no frontend build step. Live E2E uses only synthetic data and must delete its fixture afterward.
+
+Browser E2E: `PLAYWRIGHT_BROWSERS_PATH="$PWD/.playwright-browsers" npx playwright install chromium` then `PLAYWRIGHT_BROWSERS_PATH="$PWD/.playwright-browsers" npm run test:browser`. Tests use synthetic in-memory storage and dedicated port3190. Never weaken production rate limits. Keep binaries/reports out of Git/container images.
 
 ## Deployment
 

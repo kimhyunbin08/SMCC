@@ -53,3 +53,11 @@ code { overflow-wrap: anywhere; }
 .demo-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: 16px; }
 #preview p { line-height: 1.8; overflow-wrap: anywhere; }
 #preview .profile-card { max-width: 440px; margin-block: 20px; }
+.tabs a { display: inline-block; padding: 12px 16px; border-radius: 8px; background: #f0eee6; color: #302c27; text-decoration: none; }
+.tabs a[aria-current="page"], .tabs button[aria-current="page"] { background: #435739; color: white; }
+#service-content article { margin-block: 16px; }
+#service-content, #team-detail, .panel { overflow-wrap: anywhere; }
+.features { padding-bottom: 24px; }
+.header .action-link { font-weight: 600; }
+[aria-busy="true"] { opacity: .75; }
+@media (max-width: 420px) { .header { padding-block: 20px; } .perspectives { width: 100%; } .tabs a { padding: 12px; } .tabs button { flex: 1; } }
