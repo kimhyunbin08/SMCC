@@ -33,6 +33,8 @@ async function verify(value, user) {
 function profile(user) { return { id: user.id, username: user.username, name: user.name, bio: user.bio, links: user.links }; }
 const account = (user) => ({ ...profile(user), role: user.role, public: user.public, profileVersion: user.profile_version || 0 });
 const membershipVersion = (entry) => entry.version || `legacy-${entry.consent_at}`;
+const receiptMatches = (entry, receipt) => Boolean(receipt) && (receipt.membership_version === membershipVersion(entry)
+  || (!receipt.membership_version && membershipVersion(entry).startsWith('legacy-')));
 function booleanOption(value, label) {
   if (value !== undefined && typeof value !== 'boolean') fail(400, `${label}는 선택 여부로 입력하세요.`);
   return value === true;
@@ -181,7 +183,7 @@ export function createApi(store, config) {
       const user = await store.get('users', row.user_id), message = await store.get('announcements', row.announcement_id);
       const parent = message && await store.get('teams', message.team_id);
       const membership = parent?.members?.[row.user_id];
-      if (!user || user.deleted || !membership || row.membership_version !== membershipVersion(membership)) {
+      if (!user || user.deleted || !membership || !receiptMatches(membership, row)) {
         await store.mutate('receipts', row.id, (current) => current?.read_at === row.read_at && current?.membership_version === row.membership_version ? null : current);
       }
     }
@@ -462,7 +464,7 @@ export function createApi(store, config) {
         });
         const ids = new Set((await store.list('announcements')).filter((entry) => entry.team_id === id).map((entry) => entry.id));
         for (const row of await store.list('receipts')) if (row.user_id === user.id && ids.has(row.announcement_id)) {
-          await store.mutate('receipts', row.id, (current) => current?.membership_version === leftVersion ? null : current);
+          await store.mutate('receipts', row.id, (current) => receiptMatches({ version: leftVersion }, current) ? null : current);
         }
         return { ok: true };
       }
@@ -505,9 +507,8 @@ export function createApi(store, config) {
         const read = await store.get('receipts', `${user.id}_${entry.id}`);
         const fresh = await store.get('teams', entry.team_id);
         if (!fresh || fresh.deleted || !fresh.members[user.id] || fresh.ends_at <= Date.now() - 30 * DAY) continue;
-        const version = membershipVersion(fresh.members[user.id]);
         messages.push({ id: entry.id, title: entry.title, body: entry.body, created_at: entry.created_at, team_title: fresh.title,
-          read_at: read?.membership_version === version ? read.read_at : null });
+          read_at: receiptMatches(fresh.members[user.id], read) ? read.read_at : null });
       }
       return { messages: messages.sort((a, b) => b.created_at - a.created_at).slice(0, 100) };
     }
@@ -518,7 +519,7 @@ export function createApi(store, config) {
       const parent = await team(entry.team_id); requireMember(parent, user);
       const version = membershipVersion(parent.members[user.id]);
       const id = `${user.id}_${messageId}`;
-      await store.mutate('receipts', id, (current) => current?.membership_version === version ? current
+      await store.mutate('receipts', id, (current) => receiptMatches(parent.members[user.id], current) ? { ...current, membership_version: version }
         : { id, announcement_id: messageId, user_id: user.id, read_at: Date.now(), membership_version: version });
       const fresh = await team(entry.team_id); requireMember(fresh, user);
       if (membershipVersion(fresh.members[user.id]) !== version) fail(409, '팀 참여 상태가 변경되었습니다. 인박스를 다시 확인하세요.');

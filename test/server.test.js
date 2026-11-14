@@ -439,3 +439,32 @@ test('integration: missing operator approval disables new guest collection as we
   await visitor.call('/api/guest/applications', 'POST', {}, 503);
   await visitor.call('/api/register', 'POST', {}, 503);
 });
+
+test('integration: existing read receipts survive upgrade and sharing changes but not rejoin', async (t) => {
+  const { actor, db, server } = await app(t, true);
+  const host = actor(), member = actor();
+  const fields = { name: 'T', password: 'compatibility-password-123', terms: true, privacy: true, age: true };
+  await host.call('/api/register', 'POST', { ...fields, username: 'legacy_host', role: 'host' });
+  const { user } = await member.call('/api/register', 'POST', { ...fields, username: 'legacy_member', role: 'member' });
+  const { team, invite } = await host.call('/api/teams', 'POST', { title: 'legacy', place: 'private', capacity: 2,
+    startsAt: new Date(Date.now() + 3600000).toISOString(), endsAt: new Date(Date.now() + 7200000).toISOString() });
+  await member.call('/api/join', 'POST', { invite, disclosure: true });
+  const { announcementId } = await host.call(`/api/teams/${team.id}/announcements`, 'POST', { title: 'existing', body: 'notice' });
+  await member.call(`/api/inbox/${announcementId}/read`, 'POST', {});
+  const receiptId = `${user.id}_${announcementId}`;
+  await db.mutate('teams', team.id, (row) => { for (const entry of Object.values(row.members)) delete entry.version; return row; });
+  const legacyReceipt = await db.mutate('receipts', receiptId, (row) => { delete row.membership_version; return row; });
+  await server.cleanup();
+  assert.equal((await member.call('/api/inbox')).messages[0].read_at, legacyReceipt.read_at);
+  await member.call(`/api/teams/${team.id}/sharing`, 'PUT', { share: true });
+  assert.equal((await member.call('/api/inbox')).messages[0].read_at, legacyReceipt.read_at);
+  await member.call(`/api/inbox/${announcementId}/read`, 'POST', {});
+  assert.equal((await db.get('receipts', receiptId)).read_at, legacyReceipt.read_at);
+  await member.call(`/api/teams/${team.id}/leave`, 'POST', {});
+  assert.equal(await db.get('receipts', receiptId), null);
+  await member.call('/api/join', 'POST', { invite, disclosure: true });
+  await db.create('receipts', receiptId, legacyReceipt);
+  assert.equal((await member.call('/api/inbox')).messages[0].read_at, null);
+  await server.cleanup();
+  assert.equal(await db.get('receipts', receiptId), null);
+});
