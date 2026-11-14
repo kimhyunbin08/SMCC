@@ -42,19 +42,19 @@ export async function manageApplication(element, request, notice) {
 }
 
 export function mountService(element, options) {
-  const { request, getUser, openTeam, selectAccountTab, notice } = options;
+  const { request, getUser, openTeam, selectAccountTab, notice, updateHeader } = options;
   let renderVersion = 0;
   async function render(tab = 'home', chat) {
     const version = ++renderVersion, user = getUser();
+    updateHeader();
     document.getElementById('service-tabs').hidden = false;
     element.hidden = false;
     for (const link of document.querySelectorAll('[data-service-tab]')) {
       if (link.dataset.serviceTab === tab) link.setAttribute('aria-current', 'page'); else link.removeAttribute('aria-current');
     }
     const login = `/login?tab=${tab}${chat ? `&chat=${chat}` : ''}`;
-    const content = `<p>로그인 없이 공개 정보를 둘러보세요. 신청은 비회원 또는 로그인 방식 중 선택합니다. 기존 초대 전용 팀과 상세 장소는 공개되지 않습니다.</p>`;
     if (tab === 'profile') {
-      element.innerHTML = user ? '<h2>내 프로필</h2><p>아래에서 내 소개·SNS와 공개 범위를 관리하세요.</p>' : `<section class="panel"><h2>프로필</h2><p>소개와 SNS 링크를 모아 두고 공개·팀 공유는 별도로 선택합니다. 실제 내 프로필은 로그인 후 저장할 수 있습니다.</p><a class="action-link" href="${login}">로그인하고 내 프로필 만들기</a></section>`;
+      element.innerHTML = user ? '' : `<section class="panel"><h2>프로필</h2><p>로그인해서 내 소개와 SNS 링크를 관리하세요.</p><a class="action-link" href="${login}">로그인하고 내 프로필 만들기</a></section>`;
       selectAccountTab(user ? 'profile' : null); return;
     }
     if (['inbox', 'account'].includes(tab)) {
@@ -63,7 +63,7 @@ export function mountService(element, options) {
     }
     selectAccountTab(user && tab === 'coffees' ? 'teams' : null);
     if (tab === 'home') {
-      element.innerHTML = `<section class="panel"><h2>SMCC 서비스 홈</h2>${content}<p>커피챗 탭에서 호스트가 공개한 모임을 보고 신청할 수 있습니다. 카페 탭은 해당 모임의 호스트가 직접 공개한 장소 안내만 모읍니다.</p><a class="action-link" href="/service?tab=coffees">커피챗 둘러보기</a></section>`; return;
+      element.innerHTML = `<section class="panel"><h2>홈</h2><div class="service-shortcuts"><a class="action-link" href="/service?tab=coffees">커피챗 둘러보기</a><a class="action-link" href="/service?tab=cafes">카페 보기</a>${user ? `<a class="action-link" href="/service?tab=profile">내 프로필</a><a class="action-link" href="/service?tab=inbox">팀 공지 확인</a>` : `<a class="action-link" href="/login?tab=profile">로그인</a>`}</div></section>`; return;
     }
     element.innerHTML = '<p role="status">공개 정보를 불러오는 중입니다.</p>';
     try {
@@ -71,9 +71,9 @@ export function mountService(element, options) {
       if (version !== renderVersion) return;
       if (tab === 'cafes') {
         const places = [...new Set(teams.map((row) => row.publicPlace).filter(Boolean))];
-        element.innerHTML = `<section class="panel"><h2>카페·공개 장소 안내</h2><p>공개 커피챗의 호스트가 직접 입력한 장소 안내입니다. 운영자가 검증한 카페 정보나 별도 카페 DB는 아니며 상세 장소는 멤버에게만 제공합니다.</p>${places.length ? places.map((place) => `<article><h3>${escape(place)}</h3><span class="badge">호스트 제공 안내</span></article>`).join('') : '<p>아직 호스트가 공개한 카페·장소 안내가 없습니다.</p>'}</section>`; return;
+        element.innerHTML = `<section class="panel"><h2>카페·공개 장소 안내</h2>        <p>커피챗 호스트가 안내한 모임 장소입니다.</p>${places.length ? places.map((place) => `<article><h3>${escape(place)}</h3><span class="badge">호스트 제공 안내</span></article>`).join('') : '<p>아직 호스트가 공개한 카페·장소 안내가 없습니다.</p>'}</section>`; return;
       }
-      element.innerHTML = `<section class="panel"><h2>공개 커피챗</h2>${content}${teams.length ? teams.map((row) => `<article><h3>${escape(row.title)}</h3><p>${date(row.startsAt)} (한국 시간) · ${escape(row.publicPlace)}</p><p>정원 ${row.count}/${row.capacity} (비회원 대기 신청 포함)</p><button type="button" data-chat="${row.id}">커피챗 안내·신청 보기</button></article>`).join('') : '<p>현재 공개 모집 중인 커피챗이 없습니다. 초대 전용 모임은 받은 초대 링크로 확인하세요.</p>'}<div id="public-chat-detail"></div></section>`;
+      element.innerHTML = `<section class="panel"><h2>공개 커피챗</h2>${teams.length ? teams.map((row) => `<article><h3>${escape(row.title)}</h3><p>${date(row.startsAt)} (한국 시간) · ${escape(row.publicPlace)}</p><p>정원 ${row.count}/${row.capacity} (비회원 대기 신청 포함)</p><button type="button" data-chat="${row.id}">커피챗 안내·신청 보기</button></article>`).join('') : '<p>현재 공개 모집 중인 커피챗이 없습니다. 초대 전용 모임은 받은 초대 링크로 확인하세요.</p>'}<div id="public-chat-detail"></div></section>`;
       for (const button of element.querySelectorAll('[data-chat]')) button.onclick = () => chooseChat(button.dataset.chat).catch((error) => notice(error.message, true));
       if (chat) await chooseChat(chat);
     } catch (error) { if (version === renderVersion) element.innerHTML = '<p class="error">공개 정보를 불러오지 못했습니다. 새로고침 후 다시 확인하세요.</p>'; notice(error.message, true); }
@@ -81,6 +81,7 @@ export function mountService(element, options) {
   async function chooseChat(id) {
     const { team } = await request(`/api/public/teams/${id}`);
     history.replaceState(null, '', `/service?tab=coffees&chat=${id}`);
+    updateHeader();
     const target = element.querySelector('#public-chat-detail');
     if (!target) return;
     target.innerHTML = `<h3>${escape(team.title)}</h3><p>${date(team.startsAt)} ~ ${date(team.endsAt)} · ${escape(team.publicPlace)}</p><p>정원 ${team.count}/${team.capacity} · 신청 접수와 참석 확정은 구분됩니다.</p>${team.available ? `<div class="tabs"><button id="choose-guest" type="button">비회원으로 신청</button><button id="choose-login" type="button">${getUser() ? '내 계정으로 참여' : '로그인하고 신청'}</button></div>` : '<p>모집이 종료되었거나 정원이 찼습니다.</p>'}<div id="application-choice"></div>`;
@@ -107,8 +108,12 @@ export function mountService(element, options) {
   for (const link of document.querySelectorAll('[data-service-tab]')) link.onclick = (event) => {
     event.preventDefault();
     const tab = link.dataset.serviceTab;
-    history.replaceState(null, '', `/service?tab=${tab}`);
+    history.pushState(null, '', `/service?tab=${tab}`);
     render(tab).catch((error) => notice(error.message, true));
   };
+  window.addEventListener('popstate', () => {
+    const params = new URLSearchParams(location.search);
+    render(params.get('tab') || 'home', params.get('chat') || undefined).catch((error) => notice(error.message, true));
+  });
   return { render };
 }

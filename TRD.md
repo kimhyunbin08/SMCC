@@ -10,6 +10,8 @@
 
 단일 Node.js 24 HTTP 앱과 HTML/CSS/JavaScript를 유지한다. 메일·LinkedIn 앱이 없으므로 이메일 OTP/SSO/가져오기는 구현하지 않는다. Azure 인증·Table 데이터 접근에만 공식 `@azure/identity`, `@azure/data-tables` SDK와 lockfile을 사용하며 프런트엔드 빌드는 없다.
 
+Morning Paper 외부 Google Form 운영 정보는 기획 맥락만 기록한다. Forms API·응답 import·Instagram ID 수집·피드백 저장 엔드포인트는 구성하지 않았으며 향후 통합은 별도 범위/동의 검토가 필요하다. Azure 인증·Table 데이터 접근에만 공식 `@azure/identity`, `@azure/data-tables` SDK와 lockfile을 사용하며 프런트엔드 빌드는 없다.
+
 `src/database.js`는 로컬 SQLite key/value 레코드를 파일/WAL/Compose 볼륨에 저장한다. `src/table-store.js`는 동일한 `get/list/create/mutate/remove/check` 계약을 Azure Table에 구현한다. `users`, `sessions`, `teams`, `announcements`, `receipts`, `rates`는 별도 partition이며 팀의 최대 30명 멤버십은 동일 entity 안에 있어 정원·초대 회전·탈퇴를 ETag 조건부 Replace로 원자 처리한다. 충돌은 최신 데이터를 읽어 유한 재시도하며 장애를 빈 성공으로 바꾸지 않는다.
 
 작은 파일럿을 위해 팀/공지 partition을 조회한 뒤 서버에서 권한 필터링한다. 응답에 원본 전체 entity·암호·초대 hash·멤버십 map을 직렬화하지 않는다. 대규모 인덱스·큐·마이크로서비스는 추가하지 않으며 사용자/팀 증가 시 조회량·비용을 확인해야 한다.
@@ -36,6 +38,8 @@ Azure는 `smcc-rg`의 `smccdata116481c1a3` Standard_LRS/한국 중부와 `smccda
 **이후의 Phase 0/Phase 1은 보존된 이전 구조·확장 제안으로, 현재 API/동의/역할/스토리지와 다른 경우 이 절이 우선한다.**
 
 ### 공개 탐색·비회원 신청 계약
+
+공통 shell의 헤더에 미리보기 nav와 서비스 nav를 두고 경로로 상호 배타 표시한다. `/service` 및 로그인/초대/신청 관리/프로필 주소는 서비스 헤더를 사용하고 로그인 실제 계정 기준으로 인박스·계정 링크를 표시한다. 서비스 탭은 URL·aria-current·화면을 함께 변경하고 popstate/새로고침을 지원한다. 정상 `/api/status` message는 UI에 표시하지 않고 저장 기능/가입 불가 때 사용자용 오류만 표시한다. API·권한·필수 고지는 변경하지 않는다.
 
 추가 allowlist는 `/service`, `/application`, `/ui.js`, `/service.js`다. 공개 목록은 `listed===true`인 소유 호스트 선택 게시만 반환하고 기존 필드 없는 팀은 비공개다. DTO는 id/제목/UTC 일정/별도 공개 장소/정원·합계·신청 가능 여부만 포함하며 `place`·개인 자료·초대 hash·신청 map·공지 등은 제외한다. 카페는 공개 장소만 중복 제거한 호스트 안내이며 외부 레지스트리가 아니다.
 

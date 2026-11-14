@@ -5,7 +5,10 @@ test('mobile public demos stay synthetic; service navigation works without login
   const apiCalls = [];
   page.on('request', (request) => { if (new URL(request.url()).pathname.startsWith('/api/')) apiCalls.push(request.url()); });
   await page.goto('/host');
-  await expect(page.getByRole('heading', { name: '내 모임을 만들고, 초대하고, 공지해요.' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '호스트 미리보기' })).toBeVisible();
+  await expect(page.locator('.hero')).toHaveCount(0);
+  await expect(page.locator('header a[href="/host"], header a[href="/guest"]')).toHaveCount(0);
+  await expect(page.locator('header #service-cta')).toBeVisible();
   await page.locator('#demo-team-form [name=title]').fill('가상 호스트 체험');
   await page.getByRole('button', { name: '가상 팀 만들어보기' }).click();
   await expect(page.locator('#demo-team-result')).toBeVisible();
@@ -27,12 +30,32 @@ test('mobile public demos stay synthetic; service navigation works without login
   await page.locator('#service-cta').click();
   await expect(page).toHaveURL(/\/service/);
   await expect(page.locator('#auth')).toBeHidden();
+  await expect(page.locator('header #service-tabs')).toBeVisible();
+  await expect(page.locator('#preview-tabs')).toBeHidden();
+  await expect(page.locator('#preview-perspectives')).toBeHidden();
+  await expect(page.locator('#service-cta')).toBeHidden();
+  await expect(page.locator('#brand')).toHaveAttribute('href', '/service');
+  await expect(page.locator('#status')).toBeHidden();
+  await expect(page.locator('body')).not.toContainText('개인 프로젝트');
+  await expect(page.locator('body')).not.toContainText('프로토타입');
+  await expect(page.locator('body')).not.toContainText('좋은 아침, 새로운 대화.');
+  await expect(page.locator('body')).not.toContainText('Azure');
   await page.locator('[data-service-tab=coffees]').click();
   await expect(page.getByRole('heading', { name: '공개 커피챗', exact: true })).toBeVisible();
+  await expect(page.locator('[data-service-tab=coffees]')).toHaveAttribute('aria-current', 'page');
   await page.locator('[data-service-tab=cafes]').click();
   await expect(page.getByRole('heading', { name: '카페·공개 장소 안내' })).toBeVisible();
   await page.locator('[data-service-tab=profile]').click();
   await expect(page.getByRole('link', { name: '로그인하고 내 프로필 만들기' })).toBeVisible();
+  await expect(page.locator('#header-login')).toHaveAttribute('href', '/login?tab=profile');
+  await page.goBack();
+  await expect(page.locator('[data-service-tab=cafes]')).toHaveAttribute('aria-current', 'page');
+  await expect(page.getByRole('heading', { name: '카페·공개 장소 안내' })).toBeVisible();
+  await page.reload();
+  await expect(page.locator('#preview-tabs')).toBeHidden();
+  await page.locator('#brand').click();
+  await expect(page).toHaveURL(/\/service$/);
+  await expect(page.getByRole('heading', { name: '홈', exact: true })).toBeVisible();
 });
 
 async function register(page, role, navigate = true) {
@@ -71,6 +94,9 @@ test('host public listing, guest receipt, login return, consent, inbox and withd
   let hostAccount, memberAccount;
   try {
     hostAccount = await register(host, 'host');
+    await expect(host.locator('header [data-service-tab=inbox]')).toBeVisible();
+    await expect(host.locator('header [data-service-tab=account]')).toBeVisible();
+    await expect(host.locator('#preview-tabs')).toBeHidden();
     await host.locator('#host-create summary').click();
     const form = host.locator('#team-form');
     const title = `가상 공개 모임 ${randomUUID().slice(0, 8)}`;
@@ -129,6 +155,8 @@ test('host public listing, guest receipt, login return, consent, inbox and withd
     await host.locator('#announcement-form').getByRole('button', { name: '팀 인박스에 공지' }).click();
     await expect(host.locator('#message')).toContainText('공지를 등록');
     await member.locator('[data-tab=inbox]').click();
+    await expect(member).toHaveURL(/tab=inbox/);
+    await expect(member.locator('[data-service-tab=inbox]')).toHaveAttribute('aria-current', 'page');
     await member.getByRole('button', { name: '공지 확인', exact: true }).click();
     await expect(member.locator('#inbox-list')).toContainText('가상 브라우저 공지');
     await member.locator('#inbox-list').getByRole('button', { name: '읽음으로 표시' }).click();
@@ -145,4 +173,14 @@ test('host public listing, guest receipt, login return, consent, inbox and withd
     if (hostAccount) await removeAccount(host, hostAccount.password);
     await hostContext.close(); await guestContext.close(); await memberContext.close();
   }
+});
+
+test('service failures stay explicit without normal-operation banners', async ({ page }) => {
+  await page.route('**/api/status', (route) => route.fulfill({ json: { storage: false, registration: false, message: 'INTERNAL STORAGE DETAIL' } }));
+  await page.goto('/service?tab=profile');
+  await expect(page.locator('#status')).toBeVisible();
+  await expect(page.locator('#status')).toContainText('지금은 신청과 계정 서비스를 이용할 수 없습니다.');
+  await expect(page.locator('body')).not.toContainText('INTERNAL STORAGE DETAIL');
+  await expect(page.locator('header #service-tabs')).toBeVisible();
+  await expect(page.locator('#preview-tabs')).toBeHidden();
 });

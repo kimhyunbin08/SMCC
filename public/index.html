@@ -3,27 +3,28 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="description" content="서울모닝커피클럽 프로필 · 팀 · 공지 인박스 미리보기">
+  <meta name="description" content="커피챗 신청, 프로필과 모임 공지 관리">
   <title>서울모닝커피클럽 · SMCC</title>
   <link rel="stylesheet" href="/styles.css">
   <script src="/app.js" type="module"></script>
 </head>
 <body>
-  <header class="shell header"><a class="brand" href="/">SMCC<span>SEOUL MORNING COFFEE CLUB</span></a><nav class="perspectives" aria-label="호스트·게스트 둘러보기"><a href="/host">호스트</a><a href="/guest">게스트</a><a id="service-cta" class="action-link" href="/service">서비스로 이동하기</a></nav><span class="badge">0.5 MVP</span></header>
+  <header class="shell header">
+    <a id="brand" class="brand" href="/">SMCC<span>SEOUL MORNING COFFEE CLUB</span></a>
+    <nav id="preview-tabs" aria-label="서비스 진입"><a id="service-cta" class="action-link" href="/service">서비스로 이동하기</a></nav>
+    <nav id="service-tabs" class="tabs" aria-label="서비스 상단 메뉴" hidden><a href="/service?tab=home" data-service-tab="home">홈</a><a href="/service?tab=coffees" data-service-tab="coffees">커피챗</a><a href="/service?tab=cafes" data-service-tab="cafes">카페</a><a href="/service?tab=profile" data-service-tab="profile">프로필</a><a href="/service?tab=inbox" data-service-tab="inbox" data-tab="inbox" data-auth hidden>인박스</a><a href="/service?tab=account" data-service-tab="account" data-auth hidden>계정</a></nav>
+    <a id="header-login" class="action-link" href="/login" hidden>로그인</a>
+    <div id="account-tabs" class="account-tools" hidden><span id="welcome"></span><button id="logout" type="button">로그아웃</button></div>
+  </header>
   <main class="shell">
-    <section class="hero"><p class="eyebrow">좋은 아침, 새로운 대화.</p><h1>나를 소개하고,<br>함께할 아침을 만나요.</h1><p class="intro">링크 하나에 나의 소개와 SNS를 담고, 팀 초대와 공지를 한곳에서 확인하세요.</p><p>기존 <a href="https://smcc.global/" rel="noreferrer">smcc.global</a>과 별개의 보조 프로토타입입니다.</p></section>
     <section id="preview" hidden aria-label="로그인 전 기능 체험"></section>
-    <nav id="service-tabs" class="tabs" aria-label="서비스 상단 메뉴" hidden><a href="/service?tab=home" data-service-tab="home">홈</a><a href="/service?tab=coffees" data-service-tab="coffees">커피챗</a><a href="/service?tab=cafes" data-service-tab="cafes">카페</a><a href="/service?tab=profile" data-service-tab="profile">프로필</a></nav>
     <section id="service-content" hidden aria-live="polite"></section>
-    <p id="status" class="notice" role="status">운영 상태를 확인하고 있습니다. 확인 전에는 개인정보를 입력하지 마세요.</p>
+    <p id="status" class="notice" role="status" hidden></p>
     <p id="message" role="alert" aria-live="assertive"></p>
     <section id="public-profile" hidden></section>
     <section id="invite" hidden></section>
-    <nav id="account-tabs" class="tabs" aria-label="서비스 메뉴" hidden>
-      <button data-tab="profile" aria-controls="tab-profile">내 프로필</button><button data-tab="teams" aria-controls="tab-teams">내 팀</button><button data-tab="inbox" aria-controls="tab-inbox">인박스</button><button data-tab="account" aria-controls="tab-account">계정</button>
-    </nav>
     <section id="auth" class="panel" hidden>
-      <h2>로그인</h2><p>이메일 인증/SSO가 아닌 아이디·비밀번호 방식입니다.</p>
+      <h2>로그인</h2>
       <form id="login-form"><label>아이디<input name="username" required pattern="[a-z0-9_]{3,30}" autocomplete="username"></label><label>비밀번호<input name="password" type="password" required minlength="12" maxlength="128" autocomplete="current-password"></label><button type="submit">로그인</button></form>
       <details><summary>계정 만들기</summary>
         <form id="register-form"><label>아이디<input name="username" required pattern="[a-z0-9_]{3,30}" autocomplete="username"></label><label>비밀번호 (12자 이상)<input name="password" type="password" required minlength="12" maxlength="128" autocomplete="new-password"></label><label>호칭<input name="name" required maxlength="40"></label><label>계정 종류<select name="role"><option value="member">참가자</option><option value="host">호스트</option></select></label>
@@ -33,11 +34,10 @@
       <details><summary>비밀번호 복구</summary><form id="recover-form"><label>아이디<input name="username" required autocomplete="username"></label><label>가입 때 받은 복구 코드<input name="recoveryCode" required autocomplete="off"></label><label>새 비밀번호<input name="newPassword" type="password" required minlength="12" maxlength="128" autocomplete="new-password"></label><button type="submit">복구 코드로 재설정</button></form><p>아이디와 복구 코드 모두 잃으면 자동 복구할 수 없습니다. 이메일·실명 추측으로 복구하지 않습니다.</p></details>
     </section>
     <section id="dashboard" hidden>
-      <p id="welcome"></p><button id="logout">로그아웃</button>
       <section id="tab-profile" class="panel" tabindex="-1">
-        <h2>나의 링크 프로필</h2><p>별칭과 소개, 여러 SNS 주소를 담으세요. URL의 내용을 가져오거나 사실을 검증하지 않습니다.</p>
+        <h2>나의 링크 프로필</h2><p>호칭, 소개와 SNS 주소를 관리하세요.</p>
         <form id="profile-form"><label>호칭<input name="name" required maxlength="40"></label><label>한 줄 소개<textarea name="bio" maxlength="200"></textarea></label><div id="link-fields"></div><button type="button" id="add-link">SNS 링크 추가 (최대 6개)</button><label class="check"><input name="public" type="checkbox">호칭·소개·SNS 전체를 인터넷에 공개 (선택)</label><p>공개 링크는 누구나 볼 수 있습니다. 공개를 철회해도 이미 복사한 내용은 회수할 수 없습니다. 수정은 공개 프로필과 공유 중인 팀에도 반영됩니다.</p><button type="submit">프로필 저장</button></form><p id="profile-link"></p>
-        <button id="reload-profile" type="button">저장된 프로필 다시 불러오기</button><button disabled>LinkedIn 기본정보 연결 · 미설정</button><p>현재는 LinkedIn/SNS 주소 직접 등록만 지원합니다. 공식 LinkedIn 개발자 앱과 OIDC 제품 승인·자격증명이 필요합니다. 경력·학력 전체를 가져오는 MCP는 연결하지 않았습니다.</p>
+        <button id="reload-profile" type="button">저장된 프로필 다시 불러오기</button>
       </section>
       <section id="tab-teams" class="panel" tabindex="-1" hidden><h2>내 팀</h2><button id="refresh-teams" type="button">팀 목록 새로고침</button><div id="team-list"></div>
         <details id="host-create" hidden><summary>호스트 팀 만들기</summary><form id="team-form"><label>팀 이름<input name="title" required maxlength="80"></label><label>장소 (팀 멤버만 열람)<input name="place" required maxlength="160"></label><label>시작<input name="startsAt" type="datetime-local" required></label><label>종료<input name="endsAt" type="datetime-local" required></label><label>정원 (호스트 포함)<input name="capacity" type="number" min="1" max="30" value="8" required></label><label class="check"><input name="share" type="checkbox">내 프로필 전체를 이 팀 멤버에게 공유 (선택)</label><label class="check"><input name="listed" type="checkbox">커피챗 공개 목록에 제목·일정·정원·공개 장소 안내를 게시 (선택)</label><label>공개 장소 안내 (공개 목록 선택 시 필수, 상세 장소와 별도)<input name="publicPlace" maxlength="80" placeholder="예: 합정역 근처 카페 · 호스트 안내"></label><p>기본은 초대 전용입니다. 공개하지 않은 팀과 상세 장소는 서비스 목록에 표시되지 않습니다.</p><button type="submit">팀 만들기</button></form></details>
@@ -51,6 +51,6 @@
     </section>
     <section id="recovery-result" class="notice" hidden><h2>새 복구 코드를 보관하세요</h2><p>한 번만 표시됩니다. 비밀번호와 따로 안전하게 저장하세요. 다른 사람이나 채팅에 보내지 마세요.</p><code id="recovery-code"></code><button id="hide-recovery">보관했어요 · 숨기기</button></section>
   </main>
-  <footer class="shell"><span>서울모닝커피클럽 · 별도 프로토타입</span><span><a href="/privacy">개인정보 처리방침 초안</a> · <a href="/terms">이용약관 초안</a></span></footer>
+  <footer class="shell"><span>SMCC</span><nav id="preview-perspectives" class="perspectives" aria-label="호스트·게스트 둘러보기"><a href="/host">호스트</a><a href="/guest">게스트</a></nav><span><a href="/privacy">개인정보 처리방침</a> · <a href="/terms">이용약관</a></span></footer>
 </body>
 </html>

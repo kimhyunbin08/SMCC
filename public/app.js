@@ -24,6 +24,7 @@ async function request(path, method = 'GET', body) {
 function clearAccount() {
   currentUser = null; csrf = ''; selectedTeam = null;
   $('dashboard').hidden = true; $('account-tabs').hidden = true; $('auth').hidden = false;
+  updateHeader();
   for (const id of ['team-detail', 'team-list', 'inbox-list', 'link-fields', 'profile-link']) $(id).replaceChildren();
   for (const form of $('dashboard').querySelectorAll('form')) form.reset();
   $('recovery-code').textContent = ''; $('recovery-result').hidden = true;
@@ -60,8 +61,20 @@ function task(action) { return async (event) => {
 }; }
 function selectAccountTab(tab) {
   for (const section of document.querySelectorAll('[id^=tab-]')) section.hidden = !currentUser || section.id !== `tab-${tab}`;
-  for (const button of document.querySelectorAll('[data-tab]')) {
-    if (button.dataset.tab === tab) button.setAttribute('aria-current', 'page'); else button.removeAttribute('aria-current');
+}
+function updateHeader() {
+  const preview = ['/', '/host', '/guest'].includes(location.pathname);
+  $('preview-tabs').hidden = !preview;
+  $('preview-perspectives').hidden = !preview;
+  $('service-tabs').hidden = preview;
+  $('brand').href = preview ? '/' : '/service';
+  $('header-login').hidden = preview || Boolean(currentUser) || location.pathname === '/login';
+  $('header-login').href = `/login${location.pathname === '/service' ? location.search : ''}`;
+  for (const link of document.querySelectorAll('[data-auth]')) link.hidden = !currentUser;
+  const tab = new URLSearchParams(location.search).get('tab') || 'home';
+  for (const link of document.querySelectorAll('[data-service-tab]')) {
+    if (location.pathname === '/service' && link.dataset.serviceTab === (tab === 'teams' ? 'coffees' : tab)) link.setAttribute('aria-current', 'page');
+    else link.removeAttribute('aria-current');
   }
 }
 function showRecovery(code) { if (code) { $('recovery-code').textContent = code; $('recovery-result').hidden = false; } }
@@ -69,8 +82,10 @@ async function signedIn(result) {
   currentUser = result.user; csrf = result.csrf || '';
   $('auth').hidden = Boolean(currentUser) || (location.pathname !== '/login' && !location.pathname.startsWith('/invite/')); $('dashboard').hidden = !currentUser;
   $('account-tabs').hidden = !currentUser;
+  updateHeader();
   if (!currentUser) return;
   if (location.pathname === '/login') history.replaceState(null, '', servicePath(location.search));
+  updateHeader();
   $('welcome').textContent = `${currentUser.name}님 · ${currentUser.role === 'host' ? '호스트' : '참가자'}`;
   $('host-create').hidden = currentUser.role !== 'host';
   renderProfile();
@@ -152,12 +167,9 @@ async function loadInbox() {
   $('inbox-list').innerHTML = messages.length ? messages.map((item) => `<article><span class="badge">${item.read_at ? '읽음' : '새 공지'}</span><h3>${escape(item.title)}</h3><p>${escape(item.team_title)} · ${date(item.created_at)}</p><p class="pre">${escape(item.body)}</p>${item.read_at ? '' : `<button data-read="${item.id}">읽음으로 표시</button>`}</article>`).join('') : '<p>현재 팀 공지가 없습니다.</p>';
   for (const button of $('inbox-list').querySelectorAll('button')) button.onclick = task(async () => { await request(`/api/inbox/${button.dataset.read}/read`, 'POST', {}); await loadInbox(); });
 }
-for (const button of document.querySelectorAll('[data-tab]')) button.onclick = () => {
-  selectAccountTab(button.dataset.tab);
-};
 async function refreshService() {
   if (location.pathname !== '/service') return;
-  service ||= mountService($('service-content'), { request, getUser: () => currentUser, openTeam: async (id) => { await loadTeams(); selectAccountTab('teams'); await openTeam(id); }, selectAccountTab, notice });
+  service ||= mountService($('service-content'), { request, getUser: () => currentUser, openTeam: async (id) => { await loadTeams(); selectAccountTab('teams'); await openTeam(id); }, selectAccountTab, notice, updateHeader });
   const params = new URLSearchParams(location.search), tab = params.get('tab');
   await service.render(['home', 'coffees', 'cafes', 'profile', 'inbox', 'account'].includes(tab) ? tab : tab === 'teams' ? 'coffees' : 'home',
     /^[a-f0-9-]{36}$/.test(params.get('chat') || '') ? params.get('chat') : undefined);
@@ -166,7 +178,7 @@ bindForm('login-form', async (data) => { await signedIn(await request('/api/logi
 bindForm('register-form', async (data) => { await signedIn(await request('/api/register', 'POST', data)); await refreshService(); notice('계정을 만들었습니다. 복구 코드를 보관하세요.'); $('register-form').reset(); });
 bindForm('recover-form', async (data) => { await signedIn(await request('/api/recover', 'POST', data)); await refreshService(); notice('비밀번호를 변경했습니다. 이전 복구 코드는 무효입니다.'); $('recover-form').reset(); });
 bindForm('password-form', async (data) => { await signedIn(await request('/api/password', 'POST', data)); notice('모든 기존 로그인 세션을 해제했습니다. 새 복구 코드를 보관하세요.'); $('password-form').reset(); });
-bindForm('delete-form', async (data) => { await request('/api/account', 'DELETE', data); location.assign('/'); });
+bindForm('delete-form', async (data) => { await request('/api/account', 'DELETE', data); location.assign('/service'); });
 bindForm('profile-form', async (data) => {
   data.profileVersion = currentUser.profileVersion || 0;
   data.links = [...$('link-fields').children].map((row) => ({ label: row.querySelector('[data-label]').value, url: row.querySelector('[data-url]').value }));
@@ -180,7 +192,7 @@ bindForm('team-form', async (data) => {
   const result = await request('/api/teams', 'POST', data); await loadTeams(); await openTeam(result.team.id); showInvite(result.invite); $('team-form').reset(); notice('팀과 초대 링크를 만들었습니다.');
 });
 $('add-link').onclick = () => addLink();
-$('logout').onclick = task(async () => { await request('/api/logout', 'POST', {}); location.assign('/'); });
+$('logout').onclick = task(async () => { await request('/api/logout', 'POST', {}); location.assign('/service'); });
 $('refresh-inbox').onclick = task(loadInbox);
 $('refresh-teams').onclick = task(async () => { await loadTeams(); if (selectedTeam) await openTeam(selectedTeam); });
 $('reload-profile').onclick = task(async () => {
@@ -192,6 +204,7 @@ $('reload-profile').onclick = task(async () => {
 $('hide-recovery').onclick = () => { $('recovery-code').textContent = ''; $('recovery-result').hidden = true; };
 
 async function start() {
+  updateHeader();
   if (['/', '/host', '/guest'].includes(location.pathname)) {
     const role = location.pathname === '/host' ? 'host' : 'guest';
     $('status').hidden = true;
@@ -203,14 +216,16 @@ async function start() {
   const perspective = new URLSearchParams(location.search).get('perspective');
   if (perspective === 'host') $('register-form').elements.role.value = 'host';
   $('auth').hidden = location.pathname !== '/login' && !location.pathname.startsWith('/invite/');
-  const status = await request('/api/status'); storage = status.storage; registration = status.registration; $('status').textContent = status.message;
+  const status = await request('/api/status'); storage = status.storage; registration = status.registration;
   if (!storage) {
     for (const input of document.querySelectorAll('form input,form textarea,form select,form button')) input.disabled = true;
-    $('status').append(' 개인정보·비밀번호를 이 미리보기에 입력하지 마세요.');
+    $('status').hidden = false;
+    $('status').textContent = '지금은 신청과 계정 서비스를 이용할 수 없습니다. 잠시 후 다시 시도해 주세요.';
     if (location.pathname === '/service') await refreshService();
     return;
   }
   if (!status.registration) for (const control of $('register-form').querySelectorAll('input,select,button')) control.disabled = true;
+  if (!registration) { $('status').hidden = false; $('status').textContent = '새 계정 가입과 비회원 신청이 일시 중단되었습니다.'; }
   await signedIn(await request('/api/me'));
   if (location.pathname === '/service') await refreshService();
   if (location.pathname === '/application') await manageApplication($('service-content'), request, notice);
@@ -236,4 +251,4 @@ async function renderInvite() {
     });
   }
 }
-start().catch((error) => { $('status').textContent = '서비스 상태 확인에 실패했습니다. 개인정보를 입력하지 마세요.'; notice(error.message, true); for (const control of document.querySelectorAll('form input,form button')) control.disabled = true; });
+start().catch((error) => { notice(error.message, true); for (const control of document.querySelectorAll('form input,form button')) control.disabled = true; });
