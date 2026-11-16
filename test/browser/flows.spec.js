@@ -58,6 +58,60 @@ test('mobile public demos stay synthetic; service navigation works without login
   await expect(page.getByRole('heading', { name: '홈', exact: true })).toBeVisible();
 });
 
+test('warm semantic theme keeps preview and service surfaces readable and keyboard-visible', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  for (const route of ['/host', '/guest', '/service?tab=coffees']) {
+    await page.goto(route);
+    await expect(page.locator(route.startsWith('/service') ? '#service-content .panel' : '#preview .panel').first()).toBeVisible();
+    const palette = await page.evaluate((route) => {
+      const style = getComputedStyle(document.documentElement);
+      const names = ['--color-background', '--color-surface', '--color-text', '--color-text-muted', '--color-primary', '--color-on-primary', '--color-focus'];
+      const tokens = Object.fromEntries(names.map((name) => [name, style.getPropertyValue(name).trim()]));
+      const layer = document.createElement('span');
+      layer.style.color = 'var(--color-background)';
+      document.body.append(layer);
+      const background = getComputedStyle(layer).color;
+      layer.style.backgroundColor = 'var(--color-surface)';
+      const expectedSurfaceColor = getComputedStyle(layer).backgroundColor;
+      layer.style.color = 'var(--color-text)';
+      const text = getComputedStyle(layer).color;
+      layer.style.color = 'var(--color-text-muted)';
+      const muted = getComputedStyle(layer).color;
+      layer.style.color = 'var(--color-on-primary)';
+      const onPrimary = getComputedStyle(layer).color;
+      layer.style.color = 'var(--color-accent-text)';
+      const accentText = getComputedStyle(layer).color;
+      layer.style.backgroundColor = 'var(--color-accent)';
+      const accent = getComputedStyle(layer).backgroundColor;
+      layer.style.backgroundColor = 'var(--color-primary)';
+      const primarySurface = getComputedStyle(layer).backgroundColor;
+      layer.remove();
+      const luminance = (color) => {
+        const [r, g, b] = color.match(/\d+/g).slice(0, 3).map((part) => Number(part) / 255).map((value) => value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4);
+        return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+      };
+      const contrast = (first, second) => {
+        const a = luminance(first), b = luminance(second);
+        return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+      };
+      const surface = document.querySelector(route.startsWith('/service') ? '#service-content .panel' : '#preview .panel');
+      return { tokens, textContrast: contrast(text, background), mutedContrast: contrast(muted, background),
+        primaryContrast: contrast(onPrimary, primarySurface), accentContrast: contrast(accentText, accent),
+        expectedSurfaceColor, surfaceColor: surface && getComputedStyle(surface).backgroundColor };
+    }, route);
+    expect(Object.values(palette.tokens).every(Boolean)).toBe(true);
+    expect(palette.textContrast).toBeGreaterThanOrEqual(4.5);
+    expect(palette.mutedContrast).toBeGreaterThanOrEqual(4.5);
+    expect(palette.primaryContrast).toBeGreaterThanOrEqual(4.5);
+    expect(palette.accentContrast).toBeGreaterThanOrEqual(4.5);
+    expect(palette.surfaceColor).toBe(palette.expectedSurfaceColor);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  }
+  await page.goto('/host');
+  await page.locator('#service-cta').focus();
+  await expect.poll(() => page.locator('#service-cta').evaluate((element) => getComputedStyle(element).outlineStyle)).toBe('solid');
+});
+
 async function register(page, role, navigate = true) {
   const username = `browser_${randomUUID().replaceAll('-', '').slice(0, 12)}`;
   const password = `browser-password-${randomUUID()}`;
