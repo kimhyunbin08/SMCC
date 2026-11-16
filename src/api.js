@@ -394,6 +394,11 @@ export function createApi(store, config) {
         members: { [user.id]: { share, consent_at: now, version: random() } } };
       authorizeUser(await store.get('users', user.id), user);
       await store.create('teams', id, row);
+      try { authorizeUser(await store.get('users', user.id), user); }
+      catch (error) {
+        await deleteTeam(id);
+        throw error;
+      }
       return { team: sanitizeTeam(await team(id)), invite };
     }
     if (req.method === 'GET' && /^\/api\/invites\/[A-Za-z0-9_-]{43}$/.test(pathname)) {

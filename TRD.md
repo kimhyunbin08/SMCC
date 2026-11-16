@@ -56,7 +56,7 @@ Azure는 `smcc-rg`의 `smccdata116481c1a3` Standard_LRS/한국 중부와 `smccda
 
 관리 URL은 `/application?team=<uuid>#<receiptToken>`이며 비밀은 fragment에만 둔다. HTTP path/query/referrer에 보내지 않고 JSON body로 전달한다. 페이지는 no-store/no-referrer이고 외부 분석 호출은 없다. 공개 해제 후에도 본인 최소 상태만 조회하며 삭제/30일 만료는404다. 링크 분실 자동 복구·메일은 제공하지 않는다.
 
-회원 공개/초대 가입 뒤 최신 계정 인증을 재확인하고 동시 삭제된 멤버십을 보상 제거한다. 세션 생성 전후 auth_version 재확인, 프로필 DTO `profileVersion` 및 기대 버전 불일치409, UI는 항상 버전 전송이다. 멤버십 generation을 읽음에 연결해 탈퇴/재가입의 과거 읽음을 상속하지 않는다. 유지보수/탈퇴 receipt·rate 삭제도 조건부 mutation으로 새 기록을 보존한다. `mutate` null은 조건부 삭제/없으면 no-op, JSON null 저장이 아니다. Azure404/409/412만 유한 재시도하고 장애는 실패다.
+회원 공개/초대 가입 뒤 최신 계정 인증을 재확인하고 동시 삭제된 멤버십을 보상 제거한다. 호스트 팀 생성도 저장 직후 auth_version/deletion을 재확인하며 계정이 삭제/변경된 동시성 경합에서는 해당 팀을 보상 삭제한다. 세션 생성 전후 auth_version 재확인, 프로필 DTO `profileVersion` 및 기대 버전 불일치409, UI는 항상 버전 전송이다. 멤버십 generation을 읽음에 연결해 탈퇴/재가입의 과거 읽음을 상속하지 않는다. 유지보수/탈퇴 receipt·rate 삭제도 조건부 mutation으로 새 기록을 보존한다. `mutate` null은 조건부 삭제/없으면 no-op, JSON null 저장이 아니다. Azure404/409/412만 유한 재시도하고 장애는 실패다.
 
 업그레이드 전 generation 없는 멤버십/읽음은 legacy 참여에 한해 기존 읽음 시각을 유지하고 공유 변경으로 초기화하지 않는다. 새 탈퇴/재가입은 난수 generation이므로 이전 legacy 읽음을 상속하지 않는다. 유지보수/철회도 같은 호환 판정을 사용하며 실제 이전 레코드 형태의 회귀 테스트를 포함한다.
 

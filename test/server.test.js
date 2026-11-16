@@ -468,3 +468,24 @@ test('integration: existing read receipts survive upgrade and sharing changes bu
   await server.cleanup();
   assert.equal(await db.get('receipts', receiptId), null);
 });
+
+test('integration: account deletion racing host team creation leaves no team or public listing', async (t) => {
+  const { actor, db } = await app(t, true);
+  const host = actor();
+  const account = await host.call('/api/register', 'POST', { username: 'delete_create_host', password: 'delete-create-race-pass-123',
+    name: '가상 호스트', role: 'host', terms: true, privacy: true, age: true });
+  const create = db.create.bind(db);
+  let raced = false;
+  db.create = async (namespace, id, value) => {
+    const result = await create(namespace, id, value);
+    if (namespace === 'teams' && !raced) {
+      raced = true;
+      await db.mutate('users', account.user.id, (user) => ({ id: user.id, deleted: true, expires_at: Date.now() + 86400000 }));
+    }
+    return result;
+  };
+  await host.call('/api/teams', 'POST', { title: '삭제 경쟁 팀', place: '비공개 장소', capacity: 2, listed: true, publicPlace: '공개 안내',
+    startsAt: new Date(Date.now() + 3600000).toISOString(), endsAt: new Date(Date.now() + 7200000).toISOString() }, 401);
+  assert.equal((await db.list('teams')).length, 0);
+  assert.equal((await actor().call('/api/public/teams')).teams.length, 0);
+});
