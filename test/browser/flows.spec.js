@@ -58,6 +58,25 @@ test('mobile public demos stay synthetic; service navigation works without login
   await expect(page.getByRole('heading', { name: '홈', exact: true })).toBeVisible();
 });
 
+test('history navigation never interpolates untrusted chat query into login markup', async ({ page }) => {
+  const injected = '"><img id="injected-chat" src=x onerror="document.body.dataset.injected=1"><a x="';
+  const query = new URLSearchParams({ tab: 'profile', chat: injected });
+  await page.goto(`/service?${query}`);
+  await expect(page.getByRole('link', { name: '로그인하고 내 프로필 만들기' })).toHaveAttribute('href', '/login?tab=profile');
+  await page.locator('[data-service-tab=cafes]').click();
+  await page.goBack();
+  await expect(page.getByRole('link', { name: '로그인하고 내 프로필 만들기' })).toHaveAttribute('href', '/login?tab=profile');
+  await expect(page.locator('#injected-chat')).toHaveCount(0);
+  await expect(page.locator('[onerror]')).toHaveCount(0);
+  await expect(page.locator('#service-content')).not.toContainText(injected);
+  await page.evaluate((chat) => {
+    history.pushState(null, '', `/service?${new URLSearchParams({ tab: 'account', chat })}`);
+    dispatchEvent(new PopStateEvent('popstate'));
+  }, injected);
+  await expect(page.getByRole('link', { name: '로그인하고 이용하기' })).toHaveAttribute('href', '/login?tab=account');
+  await expect(page.locator('#injected-chat')).toHaveCount(0);
+});
+
 test('warm semantic theme keeps preview and service surfaces readable and keyboard-visible', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   for (const route of ['/host', '/guest', '/service?tab=coffees']) {

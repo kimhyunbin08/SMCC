@@ -1,9 +1,13 @@
+export function chatId(value) {
+  return typeof value === 'string' && /^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/.test(value) ? value : undefined;
+}
+
 export function servicePath(search = '') {
   const input = new URLSearchParams(search);
   const output = new URLSearchParams();
   if (['host', 'guest'].includes(input.get('perspective'))) output.set('perspective', input.get('perspective'));
   if (['home', 'coffees', 'cafes', 'profile', 'teams', 'inbox', 'account'].includes(input.get('tab'))) output.set('tab', input.get('tab') === 'teams' ? 'coffees' : input.get('tab'));
-  if (/^[a-f0-9-]{36}$/.test(input.get('chat') || '')) output.set('chat', input.get('chat'));
+  if (chatId(input.get('chat'))) output.set('chat', input.get('chat'));
   return `/service${output.size ? `?${output}` : ''}`;
 }
 

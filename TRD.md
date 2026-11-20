@@ -41,6 +41,8 @@ Azure는 `smcc-rg`의 `smccdata116481c1a3` Standard_LRS/한국 중부와 `smccda
 
 공통 shell의 헤더에 미리보기 nav와 서비스 nav를 두고 경로로 상호 배타 표시한다. `/service` 및 로그인/초대/신청 관리/프로필 주소는 서비스 헤더를 사용하고 로그인 실제 계정 기준으로 인박스·계정 링크를 표시한다. 서비스 탭은 URL·aria-current·화면을 함께 변경하고 popstate/새로고침을 지원한다. 정상 `/api/status` message는 UI에 표시하지 않고 저장 기능/가입 불가 때 사용자용 오류만 표시한다. API·권한·필수 고지는 변경하지 않는다.
 
+최초 렌더와 popstate는 공통 렌더 경계에서 탭 allowlist와 정확한 UUID 모양의 chat을 다시 검증한다. 로그인 복귀 URL은 URLSearchParams로 인코딩하고 DOM href 속성으로 지정하며 URL 값을 HTML에 삽입하지 않는다. 공개 상세 GET도 목록과 동일하게 비공개/닫힘/종료 모임을404 처리한다. 종료 후 회원의 기존 팀 접근 및 비회원 본인 관리 링크는 기존 보관/권한 계약을 유지한다.
+
 추가 allowlist는 `/service`, `/application`, `/ui.js`, `/service.js`다. 공개 목록은 `listed===true`인 소유 호스트 선택 게시만 반환하고 기존 필드 없는 팀은 비공개다. DTO는 id/제목/UTC 일정/별도 공개 장소/정원·합계·신청 가능 여부만 포함하며 `place`·개인 자료·초대 hash·신청 map·공지 등은 제외한다. 카페는 공개 장소만 중복 제거한 호스트 안내이며 외부 레지스트리가 아니다.
 
 | 추가 API | 권한·계약 |
@@ -63,6 +65,8 @@ Azure는 `smcc-rg`의 `smccdata116481c1a3` Standard_LRS/한국 중부와 `smccda
 개발 전용 Playwright 모바일 Chromium E2E는3190의 격리 가상 메모리 DB 서버로 실 기록·rate를 건드리지 않는다. 브라우저 다운로드/보고서는 저장소 내부 ignore 경로, 운영 이미지에서는 제외한다. CI는 단위/통합·브라우저 E2E를 통과한 SHA만 배포한다.
 
 배포 후 실제 Azure URL에서 가상 호스트/회원2명·비회원 접수/재시도·권한 분리를 확인한다. 현재 SMCC 리비전만 재시작하고 영속 계정/프로필/공개 목록/신청/공지/읽음을 확인한 뒤 확정/철회·계정/팀 fixture를 삭제한다. 실패 cleanup trap을 두며 실제 사용자 데이터를 읽거나 정리하지 않는다. 재시작에 따른 짧은 중단/콜드 스타트가 있다.
+
+`scripts/check-service.js`와 `.github/workflows/monitor.yml`은 별도 인증/계정/fixture 없이 6시간 간격 및 수동으로 `/healthz`, `/readyz`, `/api/status`의 응답 계약과 저장소 준비 상태를 확인한다. 응답 본문·연락처·인증값은 로그하지 않고 경로/실패 유형만 출력한다. 가입 중단은 운영 선택이므로 장애로 보지 않는다. GitHub Actions 지연/예약 비활성 가능성이 있으며 24시간 감시나 정리 성공·복구 보장은 아니다. 실패 통지는 GitHub의 사용자별 Actions 알림 설정을 따른다.
 
 ## 상태와 적용 범위
 

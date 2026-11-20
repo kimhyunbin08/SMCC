@@ -68,6 +68,14 @@ TEST_BASE_URL=http://localhost:3000 TEST_PHASE=verify npm run test:live
 
 main 배포 CI도 이 가상 회원/비회원 E2E를 수행하고 해당 SMCC 리비전만 재시작해 영속성을 확인한 뒤 fixture를 삭제한다. 잠깐의 재시작/콜드 스타트가 있을 수 있다. 실패 시 cleanup을 시도하고 배포 검증을 성공으로 표시하지 않는다. 실제 회원 자료를 시험 대상으로 쓰지 않는다.
 
+### 운영 점검과 장애 대응
+
+`npm run check:live`는 공개 상태·저장소 연결을 읽기만 하며 계정·신청을 만들지 않는다. 로컬은 `TEST_BASE_URL=http://localhost:3000 npm run check:live`로 확인한다. **Check live SMCC** Actions가 6시간마다 같은 점검을 수행하고 수동 실행도 가능하다. 저장소가 준비되지 않거나 잘못된 응답이면 실패한다. 의도적인 신규 가입 중단은 장애로 보지 않는다. 응답 내용·인증값은 출력하지 않는다.
+
+예약 Actions는 지연되거나 비활성화될 수 있고 서버를 깨우므로 무중단 감시·무료 실행·즉시 대응을 보장하지 않는다. 운영 담당자는 GitHub Actions 실패 알림 수신 설정을 확인한다. 실패 시 프로젝트의 Container Apps 리비전 상태, `/readyz`, Table 권한·접속, 운영 로그의 오류 유형과 `Retention cleanup failed`를 확인한다. 사용자 입력이나 토큰을 장애 이슈에 붙이지 않는다. 저장 성공을 추측하지 말고 저장 상태를 확인한 뒤 재시도하며, 코드 장애라면 마지막 정상 SHA 이미지로 되돌리고 health/ready를 재확인한다.
+
+실제 운영 확대 전 남은 확인은 운영 주체·문의/신고 대응, 개인정보·위탁 고지 검토, 복구 목표(RPO/RTO)·백업 보관/삭제·합성 데이터 복원 훈련, Cost Management의 예산/알림과 사용량 검토다. **LRS는 삭제/손상 복구용 백업이 아니고 별도 백업은 아직 없다.** 백업이나 새 유료 감시 자원은 자동 생성하지 않는다. 예산 알림은 지출 하드 한도가 아니다. 현재 가입/로그인/비회원 접수 제한은 유지하며 공유 IP의 오탐·분산 남용은 파일럿 운영에서 관찰한다. 대규모 사용 전 partition 전체 조회·정리 부하를 평가한다.
+
 ## 영속 저장·운영 설정
 
 조직 승인을 받아 `smcc-rg`의 한국 중부 `smccdata116481c1a3` StorageV2 Standard_LRS / `smccdata` table을 사용한다. Container Apps의 임시 디스크가 아니다. 기존 앱 identity에 해당 table 범위의 데이터 권한만 있으며 Shared Key는 꺼져 있다. `TABLE_ENDPOINT`, `TABLE_NAME`, `STORAGE_CLIENT_ID`, `PUBLIC_ORIGIN`을 앱 설정으로 유지한다.

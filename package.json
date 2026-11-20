@@ -9,6 +9,7 @@
     "dev": "node --watch src/server.js",
     "test": "node --test test/*.test.js",
     "test:live": "node scripts/verify-mvp.js",
+    "check:live": "node scripts/check-service.js",
     "test:browser": "playwright test"
   },
   "dependencies": {

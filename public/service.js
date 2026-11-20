@@ -1,3 +1,5 @@
+import { chatId } from './ui.js';
+
 const escape = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
 const date = (value) => new Date(value).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' });
 const states = { received: '신청 접수 · 호스트 확인 대기', confirmed: '호스트가 참여 확정', rejected: '호스트가 신청 거절', withdrawn: '신청 철회' };
@@ -45,6 +47,8 @@ export function mountService(element, options) {
   const { request, getUser, openTeam, selectAccountTab, notice, updateHeader } = options;
   let renderVersion = 0;
   async function render(tab = 'home', chat) {
+    tab = ['home', 'coffees', 'cafes', 'profile', 'inbox', 'account'].includes(tab) ? tab : 'home';
+    chat = chatId(chat);
     const version = ++renderVersion, user = getUser();
     updateHeader();
     document.getElementById('service-tabs').hidden = false;
@@ -52,13 +56,17 @@ export function mountService(element, options) {
     for (const link of document.querySelectorAll('[data-service-tab]')) {
       if (link.dataset.serviceTab === tab) link.setAttribute('aria-current', 'page'); else link.removeAttribute('aria-current');
     }
-    const login = `/login?tab=${tab}${chat ? `&chat=${chat}` : ''}`;
+    const loginParams = new URLSearchParams({ tab });
+    if (chat) loginParams.set('chat', chat);
+    const login = `/login?${loginParams}`;
     if (tab === 'profile') {
-      element.innerHTML = user ? '' : `<section class="panel"><h2>프로필</h2><p>로그인해서 내 소개와 SNS 링크를 관리하세요.</p><a class="action-link" href="${login}">로그인하고 내 프로필 만들기</a></section>`;
+      element.innerHTML = user ? '' : '<section class="panel"><h2>프로필</h2><p>로그인해서 내 소개와 SNS 링크를 관리하세요.</p><a class="action-link" data-login>로그인하고 내 프로필 만들기</a></section>';
+      if (!user) element.querySelector('[data-login]').href = login;
       selectAccountTab(user ? 'profile' : null); return;
     }
     if (['inbox', 'account'].includes(tab)) {
-      element.innerHTML = user ? '' : `<a class="action-link" href="${login}">로그인하고 이용하기</a>`;
+      element.innerHTML = user ? '' : '<a class="action-link" data-login>로그인하고 이용하기</a>';
+      if (!user) element.querySelector('[data-login]').href = login;
       selectAccountTab(user ? tab : null); return;
     }
     selectAccountTab(user && tab === 'coffees' ? 'teams' : null);
@@ -79,6 +87,7 @@ export function mountService(element, options) {
     } catch (error) { if (version === renderVersion) element.innerHTML = '<p class="error">공개 정보를 불러오지 못했습니다. 새로고침 후 다시 확인하세요.</p>'; notice(error.message, true); }
   }
   async function chooseChat(id) {
+    if (!chatId(id)) throw new Error('올바른 모임 주소를 확인하세요.');
     const { team } = await request(`/api/public/teams/${id}`);
     history.replaceState(null, '', `/service?tab=coffees&chat=${id}`);
     updateHeader();
@@ -89,7 +98,7 @@ export function mountService(element, options) {
     if (team.available) {
       target.querySelector('#choose-guest').onclick = () => guestForm(choice, { teamId: id, request, notice });
       target.querySelector('#choose-login').onclick = () => {
-        if (!getUser()) { location.assign(`/login?tab=coffees&chat=${id}`); return; }
+        if (!getUser()) { location.assign(`/login?${new URLSearchParams({ tab: 'coffees', chat: id })}`); return; }
         choice.innerHTML = '<form id="member-public-join"><label class="check"><input name="disclosure" type="checkbox" required>팀 소속 저장·공지 수신·보관/탈퇴 고지 확인 (필수)</label><label class="check"><input name="share" type="checkbox">내 프로필 전체를 팀에 공유 (선택)</label><p>회원 경로는 정원 내 직접 참여로 확정됩니다. 다른 사람 공개와 참석 보장은 별개입니다.</p><button type="submit">내 계정으로 팀 참여</button></form>';
         const form = choice.querySelector('form');
         form.onsubmit = async (event) => {

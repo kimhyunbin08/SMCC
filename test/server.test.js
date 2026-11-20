@@ -9,6 +9,7 @@ import { tableStore } from '../src/table-store.js';
 import { username, password, text, timestamp } from '../src/api.js';
 import { createDemo, previewHtml } from '../public/demo.js';
 import { servicePath, initialTab, localDateTime } from '../public/ui.js';
+import { checkService } from '../scripts/check-service.js';
 
 test('unit: public perspectives render only synthetic escaped examples and contextual login', () => {
   const host = createDemo('host'), guest = createDemo('guest');
@@ -30,6 +31,8 @@ test('unit: public perspectives render only synthetic escaped examples and conte
 test('unit: internal service destinations and actual calendar dates are allowlisted', () => {
   assert.equal(servicePath('?tab=coffees&chat=12345678-1234-1234-1234-123456789abc&return=https://evil.invalid'), '/service?tab=coffees&chat=12345678-1234-1234-1234-123456789abc');
   assert.equal(servicePath('?perspective=admin&tab=evil&chat=//evil'), '/service');
+  assert.equal(servicePath(`?tab=profile&chat=${'-'.repeat(36)}`), '/service?tab=profile');
+  assert.equal(servicePath('?tab=profile&chat=%22%3E%3Cimg%20src=x%3E'), '/service?tab=profile');
   assert.equal(initialTab('', 'host'), 'teams');
   assert.equal(initialTab('?tab=profile', 'host'), 'profile');
   assert.throws(() => localDateTime('invalid'));
@@ -44,6 +47,29 @@ test('unit: username/password/Unicode boundaries reject malformed input', () => 
   for (const input of ['', 'x'.repeat(129), null]) assert.throws(() => password(input), { status: 400 });
   assert.equal(text(' 😀😀 ', 2, 2, '호칭'), '😀😀');
   assert.throws(() => text('😀😀😀', 1, 2, '호칭'), { status: 400 });
+});
+
+test('unit: read-only service monitoring detects storage failures without leaking response data', async () => {
+  const paths = [];
+  const fetcher = async (url) => {
+    paths.push(url.pathname);
+    const body = url.pathname === '/healthz' ? { status: 'ok', service: 'smcc', revision: 'test-revision' }
+      : url.pathname === '/readyz' ? { ready: true } : { storage: true, mode: 'azure-table', registration: false };
+    return Response.json(body);
+  };
+  await checkService('https://test.smcc', fetcher);
+  assert.deepEqual(paths, ['/healthz', '/readyz', '/api/status']);
+  await assert.rejects(checkService('https://test.smcc', async () => Response.json({ secret: 'DO-NOT-LOG' }, { status: 503 })),
+    (error) => error.message.includes('/healthz') && !error.message.includes('DO-NOT-LOG'));
+  await assert.rejects(checkService('https://test.smcc', async (url) => url.pathname === '/readyz' ? Response.json({ ready: false }) : fetcher(url)),
+    /readyz.*unexpected service state/);
+  await assert.rejects(checkService('https://test.smcc', async (url) => url.pathname === '/api/status' ? Response.json({ storage: false }) : fetcher(url)),
+    /api\/status.*unexpected service state/);
+  await assert.rejects(checkService('https://test.smcc', async () => { throw new Error('PRIVATE NETWORK DETAIL'); }),
+    (error) => error.message.includes('network') && !error.message.includes('PRIVATE'));
+  for (const invalid of ['http://example.com', 'https://user:password@test.smcc', 'https://test.smcc/path', 'https://test.smcc?token=private']) {
+    await assert.rejects(checkService(invalid, fetcher), /service origin/);
+  }
 });
 
 test('unit/integration: both storage adapters prevent duplicate creation and lost updates', async () => {
@@ -145,6 +171,13 @@ test('integration: allowlist, health, policies and no-store failures are truthfu
   await actor().call('/api/register', 'POST', {}, 503);
   assert.equal((await fetch(base, { method: 'HEAD' })).status, 200);
   assert.equal((await fetch(base, { method: 'POST' })).status, 405);
+});
+
+test('integration: service monitor checks real local storage and fails a read-only preview', async (t) => {
+  const { base } = await app(t, true);
+  await checkService(base);
+  const preview = await app(t);
+  await assert.rejects(checkService(preview.base), /readyz.*HTTP/);
 });
 
 test('HTTP E2E: auth → profiles → invite/capacity/isolation → inbox/read → credentials/deletion', async (t) => {
@@ -274,6 +307,26 @@ test('integration: public listing is opt-in, guest receipts are scoped and never
   await visitor.call('/api/guest/status', 'POST', { teamId: guest.teamId, receiptToken: receipt }, 404);
   await server.cleanup();
   assert.equal(await db.get('teams', guest.teamId), null);
+});
+
+test('integration: public detail hides closed and ended listings without deleting host access or guest receipts', async (t) => {
+  const { actor, db } = await app(t, true);
+  const host = actor(), visitor = actor();
+  await host.call('/api/register', 'POST', { username: 'visibility_host', password: 'visibility-test-password', name: '가상 호스트',
+    role: 'host', terms: true, privacy: true, age: true });
+  for (const reason of ['closed', 'ended']) {
+    const { team } = await host.call('/api/teams', 'POST', { title: `가상 ${reason}`, place: '비공개 장소', capacity: 3, listed: true, publicPlace: '공개 안내',
+      startsAt: new Date(Date.now() + 3600000).toISOString(), endsAt: new Date(Date.now() + 7200000).toISOString() });
+    const receiptToken = (reason === 'closed' ? 'x' : 'y').repeat(43);
+    await visitor.call('/api/guest/applications', 'POST', { teamId: team.id, receiptToken, name: '가상 신청자', bio: '', consent: true, age: true });
+    assert.equal((await visitor.call(`/api/public/teams/${team.id}`)).team.id, team.id);
+    if (reason === 'closed') await host.call(`/api/teams/${team.id}/close`, 'POST', {});
+    else await db.mutate('teams', team.id, (row) => ({ ...row, starts_at: Date.now() - 7200000, ends_at: Date.now() - 1000 }));
+    assert.equal((await visitor.call('/api/public/teams')).teams.some((row) => row.id === team.id), false);
+    await visitor.call(`/api/public/teams/${team.id}`, 'GET', undefined, 404);
+    assert.equal((await host.call(`/api/teams/${team.id}`)).team.id, team.id);
+    assert.equal((await visitor.call('/api/guest/status', 'POST', { teamId: team.id, receiptToken })).application.state, 'received');
+  }
 });
 
 test('integration: guest/member racing for one seat, cancel/rejoin receipt generation, profile conflicts', async (t) => {

@@ -1,5 +1,5 @@
 import { mountPreview } from './demo.js';
-import { servicePath, initialTab, localDateTime } from './ui.js';
+import { servicePath, initialTab, localDateTime, chatId } from './ui.js';
 import { mountService, guestForm, manageApplication } from './service.js';
 
 const $ = (id) => document.getElementById(id);
@@ -172,7 +172,7 @@ async function refreshService() {
   service ||= mountService($('service-content'), { request, getUser: () => currentUser, openTeam: async (id) => { await loadTeams(); selectAccountTab('teams'); await openTeam(id); }, selectAccountTab, notice, updateHeader });
   const params = new URLSearchParams(location.search), tab = params.get('tab');
   await service.render(['home', 'coffees', 'cafes', 'profile', 'inbox', 'account'].includes(tab) ? tab : tab === 'teams' ? 'coffees' : 'home',
-    /^[a-f0-9-]{36}$/.test(params.get('chat') || '') ? params.get('chat') : undefined);
+    chatId(params.get('chat')));
 }
 bindForm('login-form', async (data) => { await signedIn(await request('/api/login', 'POST', data)); await refreshService(); $('login-form').reset(); notice('로그인했습니다.'); });
 bindForm('register-form', async (data) => { await signedIn(await request('/api/register', 'POST', data)); await refreshService(); notice('계정을 만들었습니다. 복구 코드를 보관하세요.'); $('register-form').reset(); });

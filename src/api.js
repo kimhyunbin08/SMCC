@@ -210,7 +210,10 @@ export function createApi(store, config) {
       const [, id, action] = publicMatch;
       const row = await team(id);
       if (row.listed !== true) fail(404, '공개 모임을 찾을 수 없습니다.');
-      if (req.method === 'GET' && !action) return { team: publicTeam(row) };
+      if (req.method === 'GET' && !action) {
+        if (row.closed || row.ends_at <= Date.now()) fail(404, '공개 모임을 찾을 수 없습니다.');
+        return { team: publicTeam(row) };
+      }
       if (req.method === 'POST' && action === 'join') {
         requireUser(user);
         if (body.disclosure !== true) fail(400, '팀 참여 고지를 확인하세요.');
